@@ -228,8 +228,21 @@ public class StatusFragment extends Fragment {
         mMenu.setEnabled(enabled);
     }
 
+    private final Runnable receptionStatusObserver = () -> {
+        if (getContext() == null || mStatusLed == null || mStatusText == null) return;
+        org.linphone.availability.ReceptionController controller = org.linphone.availability.ReceptionController.get(getContext());
+        mStatusLed.setImageResource(controller.isConnected() ? R.drawable.led_connected :
+                controller.isEnabled() ? R.drawable.led_inprogress : R.drawable.led_disconnected);
+        mStatusText.setText(controller.status());
+    };
+
     private int getStatusIconResource(RegistrationState state) {
         try {
+            if (getContext() != null) {
+                org.linphone.availability.ReceptionController controller = org.linphone.availability.ReceptionController.get(getContext());
+                if (!controller.isEnabled()) return R.drawable.led_disconnected;
+                if (!controller.isConnected()) return R.drawable.led_inprogress;
+            }
             Core lc = LinphoneManager.getLcIfManagerNotDestroyedOrNull();
             boolean defaultAccountConnected =
                     (lc != null
@@ -252,33 +265,10 @@ public class StatusFragment extends Fragment {
     }
 
     private String getStatusIconText(RegistrationState state) {
-        Context context = getActivity();
-        if (!mIsAttached && LinphoneActivity.isInstanciated())
-            context = LinphoneActivity.instance();
-        else if (!mIsAttached && LinphoneService.isReady()) context = LinphoneService.instance();
-
-        try {
-            if (state == RegistrationState.Ok
-                    && LinphoneManager.getLcIfManagerNotDestroyedOrNull()
-                                    .getDefaultProxyConfig()
-                                    .getState()
-                            == RegistrationState.Ok) {
-                return context.getString(R.string.status_connected);
-            } else if (state == RegistrationState.Progress) {
-                return context.getString(R.string.status_in_progress);
-            } else if (state == RegistrationState.Failed) {
-                return context.getString(R.string.status_error);
-            } else {
-                return context.getString(R.string.status_not_connected);
-            }
-        } catch (Exception e) {
-            Log.e(e);
-        }
-
-        return context.getString(R.string.status_not_connected);
+        Context context = getContext();
+        return context == null ? "" : org.linphone.availability.ReceptionController.get(context).status();
     }
 
-    // INCALL STATUS BAR
     private void startCallQuality() {
         mCallQuality.setVisibility(View.VISIBLE);
         mRefreshHandler.postDelayed(
@@ -328,6 +318,7 @@ public class StatusFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        org.linphone.availability.ReceptionController.get(requireContext()).addObserver(receptionStatusObserver);
 
         Core lc = LinphoneManager.getLcIfManagerNotDestroyedOrNull();
         if (lc != null) {
@@ -364,6 +355,7 @@ public class StatusFragment extends Fragment {
 
     @Override
     public void onPause() {
+        org.linphone.availability.ReceptionController.get(requireContext()).removeObserver(receptionStatusObserver);
         super.onPause();
 
         Core lc = LinphoneManager.getLcIfManagerNotDestroyedOrNull();

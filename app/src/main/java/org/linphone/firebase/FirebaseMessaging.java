@@ -60,7 +60,6 @@ public class FirebaseMessaging extends FirebaseMessagingService {
         Intent intent = new Intent(this, RegistrationIntentService.class);
         startService(intent);
 
-        android.util.Log.i("FirebaseIdService", "[Push Notification] Refreshed token: " + token);
 
         LinphoneUtils.dispatchOnUIThread(
                 () -> LinphonePreferences.instance().setPushNotificationRegistrationID(token));
@@ -78,13 +77,13 @@ public class FirebaseMessaging extends FirebaseMessagingService {
             sendNotification("sentTime: " + dateString); // Only for testing.
         }
 
-        android.util.Log.i("FirebaseMessaging", "[Push Notification] MessageData: " + remoteMessage.getData());
         android.util.Log.i("FirebaseMessaging", "[Push Notification] MessageType: " + remoteMessage.getMessageType());
         android.util.Log.i("FirebaseMessaging", "[Push Notification] OriginalPriority: " + remoteMessage.getOriginalPriority());
         android.util.Log.i("FirebaseMessaging", "[Push Notification] Priority: " + remoteMessage.getPriority());
         android.util.Log.i("FirebaseMessaging", "[Push Notification] SentTime: " + dateString);
         android.util.Log.i("FirebaseMessaging", "[Push Notification] Received");
 
+        if (!org.linphone.availability.ReceptionController.get(this).isEnabled()) return;
         if (!LinphoneService.isReady()) {
             try {
                 android.util.Log.i("FirebaseMessaging", "[Push Notification] Starting Service");

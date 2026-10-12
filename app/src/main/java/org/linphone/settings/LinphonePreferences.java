@@ -678,7 +678,7 @@ public class LinphonePreferences {
 
     public void setPushNotificationRegistrationID(String regId) {
         if (getConfig() == null) return;
-        Log.i("[Push Notification] New token received: " + regId);
+        Log.i("[Push Notification] Registration token updated");
         getConfig().setString("app", "push_notification_regid", (regId != null) ? regId : "");
         setPushNotificationEnabled(isPushNotificationEnabled());
     }
@@ -918,11 +918,11 @@ public class LinphonePreferences {
     }
 
     public boolean getServiceNotificationVisibility() {
-        return getConfig().getBool("app", "show_service_notification", false);
+        return org.linphone.availability.ReceptionController.get(mContext).keepService();
     }
 
     public void setServiceNotificationVisibility(boolean enable) {
-        getConfig().setBool("app", "show_service_notification", enable);
+        org.linphone.availability.ReceptionController.get(mContext).setEnabled(enable);
     }
 
     public String getCheckReleaseUrl() {

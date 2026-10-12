@@ -60,7 +60,7 @@ public class NotificationsManager {
     private final HashMap<String, Notifiable> mChatNotifMap;
     private final HashMap<String, Notifiable> mCallNotifMap;
     private int mLastNotificationId;
-    private final Notification mServiceNotification;
+    private Notification mServiceNotification;
     private int mCurrentForegroundServiceNotification;
 
     public NotificationsManager(Context context) {
@@ -131,7 +131,21 @@ public class NotificationsManager {
         }
     }
 
+    public void ensureReceptionForeground() {
+        if (mCurrentForegroundServiceNotification == 0 || (Build.VERSION.SDK_INT >= 29 && LinphoneService.instance().getForegroundServiceType() == 0)) startForeground();
+    }
+
+    public void updateReceptionStatus(String status) {
+        mServiceNotification = Notification.Builder.recoverBuilder(mContext, mServiceNotification)
+                .setContentText(status).setOnlyAlertOnce(true).setOngoing(true).build();
+        if (mCurrentForegroundServiceNotification == SERVICE_NOTIF_ID) mNM.notify(SERVICE_NOTIF_ID, mServiceNotification);
+    }
+
     public void stopForeground() {
+        if (org.linphone.availability.ReceptionController.get(mContext).keepService()) {
+            startForeground();
+            return;
+        }
         LinphoneService.instance().stopForeground(true);
         if (org.linphone.core.tools.AndroidPlatformHelper.isReady()) {
             org.linphone.core.tools.AndroidPlatformHelper.instance().setServiceRunningAsForeground(false);
@@ -310,6 +324,7 @@ public class NotificationsManager {
 
     public void displayCallNotification(Call call) {
         if (call == null) return;
+        if (org.linphone.availability.ReceptionController.get(mContext).blockIncoming(call)) return;
 
         Intent callNotifIntent;
         if (call.getState() == Call.State.IncomingReceived
@@ -341,6 +356,7 @@ public class NotificationsManager {
         int notificationTextId;
         int iconId;
         switch (call.getState()) {
+            case Error:
             case Released:
             case End:
                 if (mCurrentForegroundServiceNotification == notif.getNotificationId()) {
@@ -385,6 +401,7 @@ public class NotificationsManager {
             // Notification hasn't changed, do not "update" it to avoid blinking
             return;
         }
+        if (notif.getTextResourceId() == R.string.incall_notif_incoming) mNM.cancel(notif.getNotificationId());
         notif.setIconResourceId(iconId);
         notif.setTextResourceId(notificationTextId);
 
@@ -395,6 +412,10 @@ public class NotificationsManager {
 
         boolean showAnswerAction = call.getState() == Call.State.IncomingReceived
                 || call.getState() == Call.State.IncomingEarlyMedia;
+        if (showAnswerAction) {
+            org.linphone.availability.ReceptionController.get(mContext).prepareRing();
+            android.util.Log.i("Reception", "incoming_notification_requested repeating_ring");
+        }
         Notification notification =
                 Compatibility.createInCallNotification(
                         mContext,

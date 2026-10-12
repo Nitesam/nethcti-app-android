@@ -84,9 +84,14 @@ class ApiTwentySixPlus {
         channel.enableLights(false);
         channel.setShowBadge(false);
         notificationManager.createNotificationChannel(channel);
-        NotificationChannel calls = new NotificationChannel("incoming_calls_v2",
+        NotificationChannel calls = new NotificationChannel(org.linphone.availability.ReceptionController.CHANNEL,
                 context.getString(R.string.incall_notif_incoming), NotificationManager.IMPORTANCE_HIGH);
-        calls.setSound(null, null); // The SIP core plays the ringtone.
+        calls.setSound(android.provider.Settings.System.DEFAULT_RINGTONE_URI,
+                new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
+        calls.enableVibration(true);
+        calls.setVibrationPattern(new long[]{0, 500, 2000});
+        if (notificationManager.isNotificationPolicyAccessGranted()) calls.setBypassDnd(true);
         calls.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
         notificationManager.createNotificationChannel(calls);
     }
@@ -161,7 +166,7 @@ class ApiTwentySixPlus {
         Notification.Builder builder =
                 new Notification.Builder(
                                 context,
-                                showAnswerAction ? "incoming_calls_v2" : context.getString(R.string.notification_service_channel_id))
+                                showAnswerAction ? org.linphone.availability.ReceptionController.CHANNEL : context.getString(R.string.notification_service_channel_id))
                         .setContentTitle(contactName)
                         .setContentText(msg)
                         .setSmallIcon(iconID)
@@ -181,7 +186,9 @@ class ApiTwentySixPlus {
             builder.setFullScreenIntent(intent, true);
             builder.addAction(ApiTwentyFourPlus.getCallAnswerAction(context, callId));
         }
-        return builder.build();
+        Notification notification = builder.build();
+        if (showAnswerAction) notification.flags |= Notification.FLAG_INSISTENT;
+        return notification;
     }
 
     public static Notification createNotification(

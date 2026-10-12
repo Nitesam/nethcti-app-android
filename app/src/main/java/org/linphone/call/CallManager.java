@@ -60,6 +60,11 @@ public class CallManager {
 
     public void inviteAddress(
             Address lAddress, boolean videoEnabled, boolean lowBandwidth, boolean forceZRTP) {
+        org.linphone.availability.ReceptionController.get(LinphoneManager.getInstance().getContext())
+                .placeOutgoing(() -> inviteRegistered(lAddress, videoEnabled, lowBandwidth, forceZRTP));
+    }
+
+    private void inviteRegistered(Address lAddress, boolean videoEnabled, boolean lowBandwidth, boolean forceZRTP) {
         Core lc = LinphoneManager.getLc();
 
         CallParams params = lc.createCallParams(null);

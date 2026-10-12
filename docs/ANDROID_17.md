@@ -21,8 +21,8 @@ SDK locale configurato in `local.properties`,
 non versionato. Toolchain: AGP 9.1.1, Gradle 9.3.1, compile/target SDK 37,
 Build Tools 37.0.0, min SDK 28. Linphone SDK aggiornato da 4.5.26 a 5.4.127.
 
-Output: `app/build/outputs/apk/debug/app-debug.apk`, versione `1.6.2-debug`
-(4227), package `it.nethesis.nethctiapp.debug`, firmato con la chiave debug
+Output: `app/build/outputs/apk/debug/app-debug.apk`, versione `1.6.3-debug`
+(4228), package `it.nethesis.nethctiapp.debug`, firmato con la chiave debug
 locale. Conservare quella chiave per aggiornare questa installazione senza
 disinstallarla. La chiave originale Play Store non è inclusa nel repository.
 
@@ -31,6 +31,13 @@ Il progetto è aperto e importato in Android Studio. Il log dell'IDE conferma
 la sincronizzazione Gradle completata il 12 ottobre 2026 alle 18:47:35
 (in 34 secondi) e l'indicizzazione conclusa alle 18:47:46. Il progetto usa
 il JDK `jbr-25`; anche la compilazione con il wrapper è verificata.
+
+## Ricezione 1.6.3
+
+La 1.6.3 aggiunge un toggle di ricezione nella home, permanenza del servizio,
+riconnessione e squillo mediante canale Android. Risultati e limiti sono
+riportati nelle note della pre-release.
+Le verifiche storiche riportate sotto riguardano la precedente build 1.6.2.
 
 ## Modifiche principali
 

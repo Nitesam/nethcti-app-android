@@ -33,6 +33,17 @@ import java.util.List;
 public class DashboardFragment extends Fragment implements ContactsUpdatedListener {
 
     private View card1, card2;
+    private org.linphone.availability.ReceptionController reception;
+    private androidx.appcompat.widget.SwitchCompat receptionToggle;
+    private android.widget.TextView receptionStatus;
+    private boolean updatingReception;
+    private final Runnable receptionObserver = () -> {
+        if (receptionToggle == null) return;
+        updatingReception = true;
+        receptionToggle.setChecked(reception.isEnabled());
+        receptionStatus.setText(reception.status());
+        updatingReception = false;
+    };
     @Nullable
     @Override
     public View onCreateView(
@@ -45,6 +56,25 @@ public class DashboardFragment extends Fragment implements ContactsUpdatedListen
         setButtonListener((MaterialButton) view.findViewById(R.id.contacts_btn));
         setButtonListener((MaterialButton) view.findViewById(R.id.presence_btn));
 
+        reception = org.linphone.availability.ReceptionController.get(requireContext());
+        receptionToggle = view.findViewById(R.id.reception_toggle);
+        receptionStatus = view.findViewById(R.id.reception_status);
+        receptionToggle.setOnCheckedChangeListener((button, checked) -> {
+            if (updatingReception) return;
+            if (checked && !requireContext().getSharedPreferences("reception", 0).getBoolean("consent", false)) {
+                receptionObserver.run();
+                new android.app.AlertDialog.Builder(requireContext()).setTitle(R.string.reception_title)
+                    .setMessage(R.string.reception_consent)
+                    .setPositiveButton(android.R.string.ok, (d,w) -> {
+                        requireContext().getSharedPreferences("reception", 0).edit().putBoolean("consent", true).apply();
+                        reception.setEnabled(true);
+                        receptionObserver.run();
+                        reception.showSetup(requireActivity());
+                    }).setNegativeButton(android.R.string.cancel, null).show();
+            } else { reception.setEnabled(checked); receptionObserver.run(); }
+        });
+        view.findViewById(R.id.reception_setup).setOnClickListener(v -> reception.showSetup(requireActivity()));
+        reception.addObserver(receptionObserver);
         card1 = view.findViewById(R.id.card1);
         card2 = view.findViewById(R.id.card2);
 
@@ -63,12 +93,21 @@ public class DashboardFragment extends Fragment implements ContactsUpdatedListen
             LinphoneActivity.instance().hideTabBar();
             LinphoneActivity.instance().hideTopBar();
         }
+        receptionObserver.run();
         updateLastCalls();
     }
 
     @Override
     public void onContactsUpdated() {
+        receptionObserver.run();
         updateLastCalls();
+    }
+
+    @Override public void onDestroyView() {
+        reception.removeObserver(receptionObserver);
+        receptionToggle = null;
+        receptionStatus = null;
+        super.onDestroyView();
     }
 
     private void updateLastCalls(){

@@ -85,6 +85,8 @@ public class CallSettingsFragment extends Fragment {
         mDeviceRingtone = mRootView.findViewById(R.id.pref_device_ringtone);
 
         mVibrateIncomingCall = mRootView.findViewById(R.id.pref_vibrate_on_incoming_calls);
+        // Sound and vibration belong to the Android incoming-call channel.
+        mVibrateIncomingCall.setVisibility(View.GONE);
 
         mDtmfSipInfo = mRootView.findViewById(R.id.pref_sipinfo_dtmf);
 

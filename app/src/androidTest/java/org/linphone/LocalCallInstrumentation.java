@@ -26,6 +26,9 @@ public final class LocalCallInstrumentation extends Instrumentation {
     private String previousContact;
     private org.linphone.core.ProxyConfig testAccount;
     private boolean testIncoming;
+    private boolean testReception;
+    private boolean testRevokedNotifications;
+    private long receptionIdleMillis = 95000;
     private final CountDownLatch incoming = new CountDownLatch(1);
     private final CountDownLatch incomingMedia = new CountDownLatch(1);
     private final StringBuilder states = new StringBuilder();
@@ -33,16 +36,33 @@ public final class LocalCallInstrumentation extends Instrumentation {
     @Override public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
         testIncoming = arguments != null && "true".equals(arguments.getString("incoming"));
+        testReception = arguments != null && "true".equals(arguments.getString("reception"));
+        testRevokedNotifications = arguments != null && "true".equals(arguments.getString("revoked_notifications"));
+        if (arguments != null) receptionIdleMillis = Long.parseLong(arguments.getString("reception_idle_ms", "95000"));
         start();
     }
 
     @Override public void onStart() {
+        if (testReception) { new ReceptionScenarios(this, receptionIdleMillis).run(); return; }
         Bundle result = new Bundle();
         int resultCode = Activity.RESULT_CANCELED;
         try {
             require("ranchu".equals(Build.HARDWARE), "Only run on the dedicated emulator");
             require(Build.VERSION.SDK_INT >= 37, "Android 17 required");
             require(Os.sysconf(OsConstants._SC_PAGESIZE) == 16384, "16 KB pages required");
+            if (testRevokedNotifications) {
+                require(!getTargetContext().getSystemService(android.app.NotificationManager.class).areNotificationsEnabled(),
+                        "Revoke POST_NOTIFICATIONS on the emulator before this test");
+                onMain(() -> {
+                    org.linphone.availability.ReceptionController reception = org.linphone.availability.ReceptionController.get(getTargetContext());
+                    require(reception.configurationProblem().equals(getTargetContext().getString(R.string.reception_need_notifications)),
+                            "Missing notification configuration warning");
+                    require(!reception.isConnected(), "False green after permission revocation/process restart");
+                });
+                result.putString("notification_revocation", "PASS: revoked runtime permission detected after process restart");
+                finish(Activity.RESULT_OK, result);
+                return;
+            }
             verifyMinimalPermissionsAndAttachments(result);
             getTargetContext().startActivity(new Intent(getTargetContext(), LinphoneLauncherActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -65,12 +85,14 @@ public final class LocalCallInstrumentation extends Instrumentation {
                 testAccount.setIdentityAddress(Factory.instance().createAddress("sip:android-test@10.0.2.2"));
                 testAccount.setServerAddr("sip:10.0.2.2:15060;transport=udp");
                 testAccount.setRegisterEnabled(false);
+                org.linphone.availability.ReceptionController.get(getTargetContext()).setEnabled(true);
                 core.addProxyConfig(testAccount);
                 core.setDefaultProxyConfig(testAccount);
                 listener = new CoreListenerStub() {
                     @Override public void onCallStateChanged(Core lc, Call current, Call.State state, String message) {
                         synchronized (states) { states.append(state).append(' '); }
                         android.util.Log.i("LocalCallTest", state + ": " + message);
+                        if (state == Call.State.OutgoingInit) call = current;
                         if (state == Call.State.StreamsRunning) connected.countDown();
                         if (state == Call.State.IncomingReceived) {
                             call = current;
@@ -145,7 +167,7 @@ public final class LocalCallInstrumentation extends Instrumentation {
             result.putString("stream", "Local call(s), bidirectional RTP, background audio packets and hangup passed.\n");
             resultCode = Activity.RESULT_OK;
         } catch (Throwable error) {
-            result.putString("stream", error + "\nStates: " + states + "\n");
+            result.putString("stream", android.util.Log.getStackTraceString(error) + "\nStates: " + states + "\n");
 
         } finally {
             if (core != null && previousContact != null) {

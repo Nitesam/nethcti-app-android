@@ -102,9 +102,7 @@ public class AdvancedSettingsFragment extends Fragment {
         mBackgroundMode = mRootView.findViewById(R.id.pref_background_mode);
 
         mStartAtBoot = mRootView.findViewById(R.id.pref_autostart);
-        if (!getResources().getBoolean(R.bool.neth_show_pref_autostart)) {
-            mStartAtBoot.setVisibility(View.GONE);
-        }
+        mStartAtBoot.setVisibility(View.GONE); // Boot follows the persisted reception choice.
 
         mDarkMode = mRootView.findViewById(R.id.pref_dark_mode);
         mDarkMode.setVisibility(View.GONE);
@@ -154,19 +152,7 @@ public class AdvancedSettingsFragment extends Fragment {
                     });
         }
 
-        mBackgroundMode.setListener(
-                new SettingListenerBase() {
-                    @Override
-                    public void onBoolValueChanged(boolean newValue) {
-                        mPrefs.setServiceNotificationVisibility(newValue);
-                        if (newValue) {
-                            LinphoneService.instance().getNotificationManager().startForeground();
-                        } else {
-                            LinphoneService.instance().getNotificationManager().stopForeground();
-                        }
-                    }
-                });
-
+        mBackgroundMode.setVisibility(View.GONE); // Reception is controlled from the dashboard.
         if (getResources().getBoolean(R.bool.neth_show_pref_autostart)) {
             mStartAtBoot.setListener(
                     new SettingListenerBase() {

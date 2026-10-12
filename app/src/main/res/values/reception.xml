@@ -1,0 +1,21 @@
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+  <string name="reception_title">Receive calls</string>
+  <string name="reception_off">Disabled · outgoing calls available</string>
+  <string name="reception_connecting">Connecting</string>
+  <string name="reception_connected">Connected</string>
+  <string name="reception_reconnecting">Reconnecting</string>
+  <string name="reception_setup">Setup required</string>
+  <string name="reception_need_notifications">Allow notifications</string>
+  <string name="reception_need_channel">Incoming calls channel: sound and high importance</string>
+  <string name="reception_need_screen">Allow full-screen notifications</string>
+  <string name="reception_need_battery">Remove battery restrictions</string>
+  <string name="reception_need_dnd">Allow the incoming calls channel to interrupt Do Not Disturb</string>
+  <string name="reception_need_network">Allow local network access in app permissions</string>
+  <string name="reception_sound_blocked">Ringing blocked by system settings</string>
+  <string name="reception_samsung">Samsung battery settings</string>
+  <string name="reception_samsung_help">In Samsung settings, open Battery → Background usage limits → Never sleeping apps and add NethCTI. Under App info choose Battery → Unrestricted. Names may vary by device version.</string>
+  <string name="reception_consent">While reception is enabled, a persistent notification remains visible and battery use may increase. During ringing, the app temporarily enables sound and raises ring volume to at least 50%, which may also make other alerts audible. Previous settings are restored afterwards, preserving your manual changes. Configure Do Not Disturb exceptions too. Reception is unavailable without network access or after a force stop.</string>
+  <string name="reception_outgoing_failed">Registration failed; the call was not started. Retry when the connection is available.</string>
+  <string name="reception_start_blocked">Android blocked service startup. Reopen the app and enable reception again.</string>
+  <string name="reception_configure">Configure reception</string>
+</resources>

@@ -638,6 +638,13 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
                         "[Manager] We are here because of a received push notification, enter background mode before starting the Core");
                 mCore.enterBackground();
             }
+            if (!org.linphone.availability.ReceptionController.get(c).isEnabled()) {
+                for (ProxyConfig proxy : mCore.getProxyConfigList()) {
+                    proxy.edit();
+                    proxy.setRegisterEnabled(false);
+                    proxy.done();
+                }
+            }
             mCore.start();
             TimerTask lTask =
                     new TimerTask() {
@@ -804,15 +811,7 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
     }
 
     private void destroyLinphoneCore() {
-        if (LinphonePreferences.instance() != null) {
-            // We set network reachable at false before destroy LC to not send register with expires
-            // at 0
-            if (LinphonePreferences.instance().isPushNotificationEnabled()) {
-                Log.w(
-                        "[Manager] Setting network reachability to False to prevent unregister and allow incoming push notifications");
-                mCore.setNetworkReachable(false);
-            }
-        }
+        // This build has no push backend: stopping must unregister the SIP contact.
         mCore.stop();
     }
 
@@ -1044,25 +1043,8 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
         Log.i("[Manager] New registration state [" + state + "]");
 
         if (state == RegistrationState.Failed) {
-            ConnectivityManager connectivityManager =
-                    (ConnectivityManager)
-                            mServiceContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-
-            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-            Log.i("[Manager] Active network type: " + activeNetworkInfo.getTypeName());
-            if (activeNetworkInfo.isAvailable() && activeNetworkInfo.isConnected()) {
-                Log.i("[Manager] Active network is available");
-            }
-            Log.i(
-                    "[Manager] Active network reason and extra info: "
-                            + activeNetworkInfo.getReason()
-                            + " / "
-                            + activeNetworkInfo.getExtraInfo());
-            Log.i(
-                    "[Manager] Active network state "
-                            + activeNetworkInfo.getState()
-                            + " / "
-                            + activeNetworkInfo.getDetailedState());
+            ConnectivityManager cm = (ConnectivityManager) mServiceContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+            Log.i("[Manager] Default network present: " + (cm.getActiveNetwork() != null));
         }
     }
 
@@ -1098,6 +1080,11 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
     public void onCallStateChanged(final Core lc, final Call call, final State state, final String message) {
         //Log.i("[Manager] New call state [", state, "]");
         android.util.Log.i("LinphoneManager", "[Manager] New call state ["+ state + "]");
+        if ((state == Call.State.IncomingReceived || state == Call.State.IncomingEarlyMedia)
+                    && !org.linphone.availability.ReceptionController.get(mServiceContext).isEnabled()) {
+                org.linphone.availability.ReceptionController.get(mServiceContext).blockIncoming(call);
+                return;
+            }
         if (state == State.IncomingReceived && !call.equals(lc.getCurrentCall())) {
             if (call.getReplacedCall() != null) {
                 // attended transfer
@@ -1316,11 +1303,9 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
     }
 
     public void enableDeviceRingtone(boolean use) {
-        if (use) {
-            mCore.setRing(null);
-        } else {
-            mCore.setRing(mRingSoundFile);
-        }
+        // Android's incoming-call channel is the only ringtone/vibration source.
+        mCore.setRing(null);
+        mCore.setVibrationOnIncomingCallEnabled(false);
     }
 
     private synchronized void startBeeping() {
@@ -1338,69 +1323,13 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
     }
 
     private synchronized void startRinging() {
-//        if (!LinphonePreferences.instance().isDeviceRingtoneEnabled()) {
-//            // Enable speaker audio route, linphone library will do the ringing itself automatically
-//            routeAudioToSpeaker();
-//            return;
-//        }
-
-        if (mRessources.getBoolean(R.bool.allow_ringing_while_early_media)) {
-            routeAudioToSpeaker(); // Need to be able to ear the ringtone during the early media
-        }
-
-        // if (Hacks.needGalaxySAudioHack())
-        mAudioManager.setMode(MODE_RINGTONE);
-
-        try {
-            if (mVibrator != null && LinphonePreferences.instance().isIncomingCallVibrationEnabled()) {
-                long[] patern = {0, 500, 2000};
-                VibrationEffect vibrateEffect = VibrationEffect
-                        .createWaveform(patern, 1);
-                mVibrator.vibrate(vibrateEffect);
-            }
-            if (mAudioManager.getRingerMode() == AudioManager.RINGER_MODE_NORMAL && mRingerPlayer == null ) {
-                requestAudioFocus(STREAM_RING);
-                mRingerPlayer = new MediaPlayer();
-                mRingerPlayer.setAudioAttributes(
-                        new AudioAttributes
-                                .Builder()
-                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                                .build());
-
-                Uri ringtoneUri = Settings.System.DEFAULT_RINGTONE_URI;
-
-                String ringtone = LinphonePreferences.instance().isDeviceRingtoneEnabled()
-                        ? LinphonePreferences.instance().getRingtone(ringtoneUri.toString())
-                        : mRingSoundFile;
-
-                try {
-                    if (ringtone.startsWith("content://")) {
-                        mRingerPlayer.setDataSource(mServiceContext, Uri.parse(ringtone));
-                    } else {
-                        FileInputStream fis = new FileInputStream(ringtone);
-                        mRingerPlayer.setDataSource(fis.getFD());
-                        fis.close();
-                    }
-                } catch (IOException | SecurityException e) {
-                    // An old custom ringtone may no longer be readable. Use the bundled sound.
-                    Log.w("[Manager] Custom ringtone unavailable, using the app ringtone");
-                    mRingerPlayer.reset();
-                    mRingerPlayer.setDataSource(mRingSoundFile);
-                }
-
-                mRingerPlayer.prepare();
-                mRingerPlayer.setLooping(true);
-                mRingerPlayer.start();
-            } else {
-                Log.w("[Manager] Already ringing");
-            }
-        } catch (Exception e) {
-            Log.e(e, "[Manager] Cannot handle incoming call");
-        }
+        // The incoming notification is the sole sound/vibration owner.
+        org.linphone.availability.ReceptionController.get(mServiceContext).prepareRing();
         mIsRinging = true;
     }
 
     private synchronized void stopRinging() {
+        org.linphone.availability.ReceptionController.get(mServiceContext).finishRingIfNeeded();
         if (mRingerPlayer != null) {
             try {
                 mRingerPlayer.stop();

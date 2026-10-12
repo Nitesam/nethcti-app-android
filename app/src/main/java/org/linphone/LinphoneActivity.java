@@ -470,6 +470,7 @@ public class LinphoneActivity extends LinphoneGenericActivity
     @Override
     protected void onResume() {
         super.onResume();
+        mIsOnBackground = false;
         if (!LinphoneService.isReady()) {
             android.util.Log.i("LinphoneActivity", "Start Foreground Service");
             startForegroundService(new Intent(Intent.ACTION_MAIN).setClass(this, LinphoneService.class));

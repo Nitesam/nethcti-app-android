@@ -42,6 +42,8 @@ public class AccountEnableReceiver extends BroadcastReceiver {
                         + Boolean.toString(enable));
         if (prefsAccountIndex < 0
                 || prefsAccountIndex >= LinphonePreferences.instance().getAccountCount()) return;
+        // Reception consent is managed only by the dashboard.
+        if (!org.linphone.availability.ReceptionController.get(context).isEnabled()) return;
         LinphonePreferences.instance().setAccountEnabled(prefsAccountIndex, enable);
     }
 }

@@ -38,7 +38,7 @@ public class BootReceiver extends BroadcastReceiver {
                     "Device is shutting down, destroying Core to unregister");
             LinphoneManager.destroy();
         } else if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            boolean autostart = LinphonePreferences.instance().isAutoStartEnabled();
+            boolean autostart = org.linphone.availability.ReceptionController.get(context).isEnabled();
             android.util.Log.i(
                     "LinphoneBootReceiver", "Device is starting, auto_start is " + autostart);
             if (autostart && !LinphoneService.isReady()) {

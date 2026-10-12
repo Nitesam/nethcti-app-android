@@ -204,6 +204,7 @@ public final class LinphoneService extends CoreService {
         startFromNotif = isPush;
         sInstance = this; // sInstance is ready once linphone manager has been created
         mNotificationManager = new NotificationsManager(this);
+        org.linphone.availability.ReceptionController.get(this).attach(LinphoneManager.getLc());
         mNotificationManager.startForeground();
         // Attach the SDK listener after Core exists, so call media service types are managed.
         super.onStartCommand(intent, flags, startId);
@@ -226,6 +227,11 @@ public final class LinphoneService extends CoreService {
                                                 "LinphoneService",
                                                 "[LinphoneService] State -> " + state.toString());
 
+                                        if ((state == Call.State.IncomingReceived || state == Call.State.IncomingEarlyMedia)
+                                                && !org.linphone.availability.ReceptionController.get(LinphoneService.this).isEnabled()) {
+                                            org.linphone.availability.ReceptionController.get(LinphoneService.this).blockIncoming(call);
+                                            return;
+                                        }
                                         nethCallHandler.removeCallbacksAndMessages(null);
 
                                         if (getResources()
@@ -370,7 +376,7 @@ public final class LinphoneService extends CoreService {
                             }
                         } catch (Exception e) {
                             android.util.Log.w("LinphoneService", e.getLocalizedMessage());
-                            stopSelf(); // Are you sure?
+                            if (!org.linphone.availability.ReceptionController.get(LinphoneService.this).keepService()) stopSelf();
                         }
                     }
                 },
@@ -487,22 +493,31 @@ public final class LinphoneService extends CoreService {
                 lc.terminateAllCalls();
             }
 
-            // If push is enabled, don't unregister account, otherwise do unregister
-            if (LinphonePreferences.instance().isPushNotificationEnabled()) {
-                if (lc != null) lc.setNetworkReachable(false);
-            }
             stopSelf();
         }
         super.onTaskRemoved(rootIntent);
     }
 
+    private boolean destroyingReceptionService;
+
+    @Override public void hideForegroundServiceNotification() {
+        if (!destroyingReceptionService && mNotificationManager != null
+                && org.linphone.availability.ReceptionController.get(this).keepService()) {
+            mNotificationManager.startForeground();
+        } else {
+            super.hideForegroundServiceNotification();
+        }
+    }
+
     @Override
     public synchronized void onDestroy() {
+        destroyingReceptionService = true;
         if (mActivityCallbacks != null) {
             getApplication().unregisterActivityLifecycleCallbacks(mActivityCallbacks);
             mActivityCallbacks = null;
         }
         destroyOverlay();
+        org.linphone.availability.ReceptionController.get(this).detach();
 
         Core lc = LinphoneManager.getLcIfManagerNotDestroyedOrNull();
         if (lc != null) {

@@ -80,6 +80,9 @@ def main():
                     value += ";tag=local-test-peer"
                 response_headers.append(name + ": " + value)
             body = ""
+            if first_line.startswith("REGISTER "):
+                response_headers += ["Contact: " + value for value in headers.get("contact", [])]
+                response_headers.append("Expires: " + headers.get("expires", ["300"])[0])
             if first_line.startswith("INVITE "):
                 sip_target = source
                 contact = re.search(r"<([^>]+)>", headers["contact"][0])[1]
