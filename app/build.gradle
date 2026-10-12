@@ -68,8 +68,8 @@ android {
     defaultConfig {
         minSdk 28
         targetSdk 37
-        versionCode 4228
-        versionName '1.6.3'
+        versionCode 4229
+        versionName '1.6.4'
         applicationId getPackageName()
         multiDexEnabled true
         testInstrumentationRunner 'org.linphone.LocalCallInstrumentation'

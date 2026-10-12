@@ -33,6 +33,7 @@ public final class ReceptionController {
     private int attempts;
     private boolean checking, networkChanged, sawRegistration;
     private boolean serviceStartBlocked;
+    private Boolean previousDndAccess;
     private RegistrationState registration = RegistrationState.None;
     private final RingAudioOverride audio;
     private String lastStatus = "";
@@ -208,14 +209,24 @@ public final class ReceptionController {
     }
     public String configurationProblem() {
         NotificationManager nm = context.getSystemService(NotificationManager.class);
-        if (!nm.areNotificationsEnabled()) return context.getString(R.string.reception_need_notifications);
+        boolean dndAccess = nm.isNotificationPolicyAccessGranted();
         NotificationChannel channel = nm.getNotificationChannel(CHANNEL);
+        // The channel normally predates the user's grant. Refresh it when returning
+        // from Settings, without restarting the service or recreating the channel.
+        // Android preserves a bypass choice that the user has locked in channel settings.
+        if (dndAccess && !Boolean.TRUE.equals(previousDndAccess) && channel != null && !channel.canBypassDnd()) {
+            channel.setBypassDnd(true);
+            nm.createNotificationChannel(channel);
+            channel = nm.getNotificationChannel(CHANNEL);
+        }
+        previousDndAccess = dndAccess;
+        if (!nm.areNotificationsEnabled()) return context.getString(R.string.reception_need_notifications);
         if (channel == null || channel.getImportance() < NotificationManager.IMPORTANCE_HIGH || channel.getSound() == null)
             return context.getString(R.string.reception_need_channel);
         if (Build.VERSION.SDK_INT >= 34 && !nm.canUseFullScreenIntent()) return context.getString(R.string.reception_need_screen);
         if (!context.getSystemService(PowerManager.class).isIgnoringBatteryOptimizations(context.getPackageName()))
             return context.getString(R.string.reception_need_battery);
-        if (!nm.isNotificationPolicyAccessGranted() || !channel.canBypassDnd())
+        if (!dndAccess || !channel.canBypassDnd())
             return context.getString(R.string.reception_need_dnd);
         int filter = nm.getCurrentInterruptionFilter();
         if (filter == NotificationManager.INTERRUPTION_FILTER_NONE || filter == NotificationManager.INTERRUPTION_FILTER_ALARMS)
@@ -262,7 +273,15 @@ public final class ReceptionController {
                     case 1: intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.getPackageName()).putExtra(Settings.EXTRA_CHANNEL_ID, CHANNEL); break;
                     case 2: intent = new Intent(Build.VERSION.SDK_INT >= 34 ? Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT : Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.getPackageName())); break;
                     case 3: intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + context.getPackageName())); break;
-                    case 4: intent = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS); break;
+                    case 4:
+                        if (context.getSystemService(NotificationManager.class).isNotificationPolicyAccessGranted()) {
+                            intent = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.getPackageName())
+                                .putExtra(Settings.EXTRA_CHANNEL_ID, CHANNEL);
+                        } else {
+                            intent = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+                        }
+                        break;
                     default:
                         new AlertDialog.Builder(activity).setMessage(R.string.reception_samsung_help).setPositiveButton(android.R.string.ok, (d,w) -> activity.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.getPackageName())))).show();
                         return;

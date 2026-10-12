@@ -28,6 +28,7 @@ public final class LocalCallInstrumentation extends Instrumentation {
     private boolean testIncoming;
     private boolean testReception;
     private boolean testRevokedNotifications;
+    private boolean testDndGrant;
     private long receptionIdleMillis = 95000;
     private final CountDownLatch incoming = new CountDownLatch(1);
     private final CountDownLatch incomingMedia = new CountDownLatch(1);
@@ -38,6 +39,7 @@ public final class LocalCallInstrumentation extends Instrumentation {
         testIncoming = arguments != null && "true".equals(arguments.getString("incoming"));
         testReception = arguments != null && "true".equals(arguments.getString("reception"));
         testRevokedNotifications = arguments != null && "true".equals(arguments.getString("revoked_notifications"));
+        testDndGrant = arguments != null && "true".equals(arguments.getString("dnd_grant"));
         if (arguments != null) receptionIdleMillis = Long.parseLong(arguments.getString("reception_idle_ms", "95000"));
         start();
     }
@@ -50,6 +52,32 @@ public final class LocalCallInstrumentation extends Instrumentation {
             require("ranchu".equals(Build.HARDWARE), "Only run on the dedicated emulator");
             require(Build.VERSION.SDK_INT >= 37, "Android 17 required");
             require(Os.sysconf(OsConstants._SC_PAGESIZE) == 16384, "16 KB pages required");
+            if (testDndGrant) {
+                android.app.NotificationManager notifications = getTargetContext().getSystemService(android.app.NotificationManager.class);
+                require(!notifications.isNotificationPolicyAccessGranted(), "Start with DND access revoked on a fresh emulator install");
+                onMain(() -> {
+                    org.linphone.compatibility.Compatibility.createNotificationChannels(getTargetContext());
+                    org.linphone.availability.ReceptionController.get(getTargetContext()).configurationProblem();
+                    require(!notifications.getNotificationChannel(org.linphone.availability.ReceptionController.CHANNEL).canBypassDnd(),
+                            "Channel must predate the DND grant");
+                });
+                try (android.os.ParcelFileDescriptor descriptor = getUiAutomation().executeShellCommand("cmd notification allow_dnd it.nethesis.nethctiapp.debug");
+                     java.io.FileInputStream stream = new java.io.FileInputStream(descriptor.getFileDescriptor())) {
+                    byte[] buffer = new byte[1024];
+                    while (stream.read(buffer) != -1) { }
+                }
+                require(notifications.isNotificationPolicyAccessGranted(), "DND access grant failed");
+                onMain(() -> {
+                    org.linphone.availability.ReceptionController.get(getTargetContext()).configurationProblem();
+                    android.app.NotificationChannel channel = notifications.getNotificationChannel(org.linphone.availability.ReceptionController.CHANNEL);
+                    require(channel.canBypassDnd(), "Channel not refreshed after DND grant without restart");
+                    require(channel.getImportance() == android.app.NotificationManager.IMPORTANCE_HIGH && channel.getSound() != null,
+                            "Channel audio or importance altered");
+                });
+                result.putString("dnd_grant", "PASS: channel created before consent receives DND bypass without process/service restart");
+                finish(Activity.RESULT_OK, result);
+                return;
+            }
             if (testRevokedNotifications) {
                 require(!getTargetContext().getSystemService(android.app.NotificationManager.class).areNotificationsEnabled(),
                         "Revoke POST_NOTIFICATIONS on the emulator before this test");

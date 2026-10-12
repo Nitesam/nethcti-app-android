@@ -21,8 +21,8 @@ SDK locale configurato in `local.properties`,
 non versionato. Toolchain: AGP 9.1.1, Gradle 9.3.1, compile/target SDK 37,
 Build Tools 37.0.0, min SDK 28. Linphone SDK aggiornato da 4.5.26 a 5.4.127.
 
-Output: `app/build/outputs/apk/debug/app-debug.apk`, versione `1.6.3-debug`
-(4228), package `it.nethesis.nethctiapp.debug`, firmato con la chiave debug
+Output: `app/build/outputs/apk/debug/app-debug.apk`, versione `1.6.4-debug`
+(4229), package `it.nethesis.nethctiapp.debug`, firmato con la chiave debug
 locale. Conservare quella chiave per aggiornare questa installazione senza
 disinstallarla. La chiave originale Play Store non è inclusa nel repository.
 
