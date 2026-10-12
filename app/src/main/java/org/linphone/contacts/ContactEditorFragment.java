@@ -20,18 +20,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 import android.annotation.SuppressLint;
-import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
-import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.provider.ContactsContract.DisplayPhoto;
-import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -59,14 +55,11 @@ import org.linphone.utils.LinphoneUtils;
 import org.linphone.views.ContactAvatar;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ContactEditorFragment extends Fragment {
-    private static final int ADD_PHOTO = 1337;
     private static final int PHOTO_SIZE = 128;
 
     private View mView;
@@ -82,7 +75,11 @@ public class ContactEditorFragment extends Fragment {
     private int mFirstSipAddressIndex = -1;
     private LinearLayout mSipAddresses, mNumbers;
     private String mNewSipOrNumberToAdd, mNewDisplayName;
-    private Uri mPickedPhotoForContactUri;
+    private final org.linphone.utils.AttachmentPicker attachmentPicker =
+            new org.linphone.utils.AttachmentPicker(this, uri -> {
+                String path = FileUtils.getFilePath(requireContext(), uri);
+                if (path != null) editContactPicture(path, null);
+            });
     private byte[] mPhotoToAdd;
 
     public View onCreateView(
@@ -330,7 +327,6 @@ public class ContactEditorFragment extends Fragment {
                     @Override
                     public void onClick(View view) {
                         pickImage();
-                        LinphoneActivity.instance().checkAndRequestCameraPermission();
                     }
                 });
 
@@ -393,77 +389,15 @@ public class ContactEditorFragment extends Fragment {
     }
 
     private void pickImage() {
-        mPickedPhotoForContactUri = null;
-        final List<Intent> cameraIntents = new ArrayList<>();
-        final Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        File file =
-                new File(
-                        FileUtils.getStorageDirectory(LinphoneActivity.instance()),
-                        getString(R.string.temp_photo_name));
-        mPickedPhotoForContactUri = Uri.fromFile(file);
-        captureIntent.putExtra("outputX", PHOTO_SIZE);
-        captureIntent.putExtra("outputY", PHOTO_SIZE);
-        captureIntent.putExtra("aspectX", 0);
-        captureIntent.putExtra("aspectY", 0);
-        captureIntent.putExtra("scale", true);
-        captureIntent.putExtra("return-data", false);
-        captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mPickedPhotoForContactUri);
-        cameraIntents.add(captureIntent);
-
-        final Intent galleryIntent = new Intent();
-        galleryIntent.setType("image/*");
-        galleryIntent.setAction(Intent.ACTION_GET_CONTENT);
-
-        final Intent chooserIntent =
-                Intent.createChooser(galleryIntent, getString(R.string.image_picker_title));
-        chooserIntent.putExtra(
-                Intent.EXTRA_INITIAL_INTENTS, cameraIntents.toArray(new Parcelable[] {}));
-
-        startActivityForResult(chooserIntent, ADD_PHOTO);
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == ADD_PHOTO && resultCode == Activity.RESULT_OK) {
-            if (data != null && data.getExtras() != null && data.getExtras().get("data") != null) {
-                Bitmap bm = (Bitmap) data.getExtras().get("data");
-                editContactPicture(null, bm);
-            } else if (data != null && data.getData() != null) {
-                Uri selectedImageUri = data.getData();
-                try {
-                    Bitmap selectedImage =
-                            MediaStore.Images.Media.getBitmap(
-                                    LinphoneManager.getInstance().getContext().getContentResolver(),
-                                    selectedImageUri);
-                    selectedImage =
-                            Bitmap.createScaledBitmap(selectedImage, PHOTO_SIZE, PHOTO_SIZE, false);
-                    editContactPicture(null, selectedImage);
-                } catch (IOException e) {
-                    Log.e(e);
-                }
-            } else if (mPickedPhotoForContactUri != null) {
-                String filePath = mPickedPhotoForContactUri.getPath();
-                editContactPicture(filePath, null);
-            } else {
-                File file =
-                        new File(
-                                FileUtils.getStorageDirectory(LinphoneActivity.instance()),
-                                getString(R.string.temp_photo_name));
-                if (file.exists()) {
-                    mPickedPhotoForContactUri = Uri.fromFile(file);
-                    String filePath = mPickedPhotoForContactUri.getPath();
-                    editContactPicture(filePath, null);
-                }
-            }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
+        attachmentPicker.show("image/*");
     }
 
     private void editContactPicture(String filePath, Bitmap image) {
         if (image == null) {
             image = BitmapFactory.decodeFile(filePath);
         }
+
+        if (image == null) return;
 
         Bitmap scaledPhoto;
         int size = getThumbnailSize();

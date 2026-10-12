@@ -187,7 +187,7 @@ public class LinphonePreferences {
     }
 
     public void enabledFriendlistSubscription(boolean enabled) {
-        getLc().enableFriendListSubscription(enabled);
+        getLc().setFriendListSubscriptionEnabled(enabled);
     }
 
     public int getDefaultAccountIndex() {
@@ -218,7 +218,7 @@ public class LinphonePreferences {
             return;
         }
         prxCfg.edit();
-        prxCfg.enableRegister(enabled);
+        prxCfg.setRegisterEnabled(enabled);
         prxCfg.done();
 
         // If default proxy config is disabled, try to set another one as default proxy
@@ -239,7 +239,7 @@ public class LinphonePreferences {
     }
 
     public boolean isAccountEnabled(int n) {
-        return getProxyConfig(n).registerEnabled();
+        return getProxyConfig(n).isRegisterEnabled();
     }
 
     public void resetDefaultProxyConfig() {
@@ -261,12 +261,12 @@ public class LinphonePreferences {
     // Audio settings
     public void setEchoCancellation(boolean enable) {
         if (getLc() == null) return;
-        getLc().enableEchoCancellation(enable);
+        getLc().setEchoCancellationEnabled(enable);
     }
 
     public boolean echoCancellationEnabled() {
         if (getLc() == null) return false;
-        return getLc().echoCancellationEnabled();
+        return getLc().isEchoCancellationEnabled();
     }
 
     public int getEchoCalibration() {
@@ -302,13 +302,13 @@ public class LinphonePreferences {
 
     public boolean isVideoEnabled() {
         if (getLc() == null) return false;
-        return getLc().videoSupported() && getLc().videoEnabled();
+        return getLc().videoSupported() && getLc().isVideoEnabled();
     }
 
     public void enableVideo(boolean enable) {
         if (getLc() == null) return;
-        getLc().enableVideoCapture(enable);
-        getLc().enableVideoDisplay(enable);
+        getLc().setVideoCaptureEnabled(enable);
+        getLc().setVideoDisplayEnabled(enable);
     }
 
     public boolean shouldInitiateVideoCall() {
@@ -443,12 +443,12 @@ public class LinphonePreferences {
     // End of call settings
 
     public boolean isWifiOnlyEnabled() {
-        return getLc().wifiOnlyEnabled();
+        return getLc().isWifiOnlyEnabled();
     }
 
     // Network settings
     public void setWifiOnlyEnabled(Boolean enable) {
-        getLc().enableWifiOnly(enable);
+        getLc().setWifiOnlyEnabled(enable);
     }
 
     public void useRandomPort(boolean enabled) {
@@ -512,26 +512,26 @@ public class LinphonePreferences {
 
     public boolean isIceEnabled() {
         NatPolicy nat = getOrCreateNatPolicy();
-        return nat.iceEnabled();
+        return nat.isIceEnabled();
     }
 
     public void setIceEnabled(boolean enabled) {
         if (getLc() == null) return;
         NatPolicy nat = getOrCreateNatPolicy();
-        nat.enableIce(enabled);
-        nat.enableStun(enabled);
+        nat.setIceEnabled(enabled);
+        nat.setStunEnabled(enabled);
         getLc().setNatPolicy(nat);
     }
 
     public boolean isTurnEnabled() {
         NatPolicy nat = getOrCreateNatPolicy();
-        return nat.turnEnabled();
+        return nat.isTurnEnabled();
     }
 
     public void setTurnEnabled(boolean enabled) {
         if (getLc() == null) return;
         NatPolicy nat = getOrCreateNatPolicy();
-        nat.enableTurn(enabled);
+        nat.setTurnEnabled(enabled);
         getLc().setNatPolicy(nat);
     }
 
@@ -685,12 +685,12 @@ public class LinphonePreferences {
 
     public void useIpv6(Boolean enable) {
         if (getLc() == null) return;
-        getLc().enableIpv6(enable);
+        getLc().setIpv6Enabled(enable);
     }
 
     public boolean isUsingIpv6() {
         if (getLc() == null) return false;
-        return getLc().ipv6Enabled();
+        return getLc().isIpv6Enabled();
     }
     // End of network settings
 
@@ -851,12 +851,12 @@ public class LinphonePreferences {
 
     public boolean adaptiveRateControlEnabled() {
         if (getLc() == null) return false;
-        return getLc().adaptiveRateControlEnabled();
+        return getLc().isAdaptiveRateControlEnabled();
     }
 
     public void enableAdaptiveRateControl(boolean enabled) {
         if (getLc() == null) return;
-        getLc().enableAdaptiveRateControl(enabled);
+        getLc().setAdaptiveRateControlEnabled(enabled);
     }
 
     public int getCodecBitrateLimit() {
@@ -952,13 +952,8 @@ public class LinphonePreferences {
     }
 
     public boolean isDeviceRingtoneEnabled() {
-        int readExternalStorage =
-                mContext.getPackageManager()
-                        .checkPermission(
-                                android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU ? Manifest.permission.READ_MEDIA_AUDIO : Manifest.permission.READ_EXTERNAL_STORAGE,
-                                mContext.getPackageName());
-        return getConfig().getBool("app", "device_ringtone", true)
-                && readExternalStorage == PackageManager.PERMISSION_GRANTED;
+        // The system default ringtone URI does not require access to the music library.
+        return getConfig().getBool("app", "device_ringtone", true);
     }
 
     public void enableDeviceRingtone(boolean enable) {

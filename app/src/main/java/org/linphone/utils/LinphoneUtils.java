@@ -61,7 +61,7 @@ import org.linphone.core.Call;
 import org.linphone.core.Call.State;
 import org.linphone.core.CallLog;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomCapabilities;
+
 import org.linphone.core.Core;
 import org.linphone.core.Factory;
 import org.linphone.core.LogCollectionState;
@@ -534,7 +534,7 @@ public final class LinphoneUtils {
     public static ArrayList<ChatRoom> removeEmptyOneToOneChatRooms(ChatRoom[] rooms) {
         ArrayList<ChatRoom> newRooms = new ArrayList<>();
         for (ChatRoom room : rooms) {
-            if (room.hasCapability(ChatRoomCapabilities.OneToOne.toInt())
+            if (room.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())
                     && room.getHistorySize() == 0) {
                 // Hide 1-1 chat rooms without messages
             } else {

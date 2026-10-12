@@ -173,8 +173,6 @@ public final class LinphoneService extends CoreService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        super.onStartCommand(intent, flags, startId);
-
         android.util.Log.i(
                 "LinphoneService",
                 "[LinphoneService] onStartCommand");
@@ -194,6 +192,7 @@ public final class LinphoneService extends CoreService {
         }
 
         if (sInstance != null) {
+            super.onStartCommand(intent, flags, startId);
             android.util.Log.i(
                     "LinphoneService",
                     "[LinphoneService] Attempt to start the LinphoneService but it is already running !");
@@ -205,6 +204,9 @@ public final class LinphoneService extends CoreService {
         startFromNotif = isPush;
         sInstance = this; // sInstance is ready once linphone manager has been created
         mNotificationManager = new NotificationsManager(this);
+        mNotificationManager.startForeground();
+        // Attach the SDK listener after Core exists, so call media service types are managed.
+        super.onStartCommand(intent, flags, startId);
         LinphoneManager.getLc()
                 .addListener(
                         mListener =
@@ -416,7 +418,7 @@ public final class LinphoneService extends CoreService {
 
         Core core = LinphoneManager.getLc();
         Call call = core.getCurrentCall();
-        if (call == null || !call.getCurrentParams().videoEnabled()) return;
+        if (call == null || !call.getCurrentParams().isVideoEnabled()) return;
 
         if ("MSAndroidOpenGLDisplay".equals(core.getVideoDisplayFilter())) {
             mOverlay = new LinphoneGL2JNIViewOverlay(this);
@@ -546,13 +548,11 @@ public final class LinphoneService extends CoreService {
                 "LinphoneService",
                 "[LinphoneService] Start LinphoneActivity");
         Intent intent = new Intent(this, mIncomingReceivedActivity);
-        if (LinphoneActivity.isInstanciated()) {
+        if (LinphoneActivity.isInstanciated() && !LinphoneActivity.instance().isOnBackground()) {
             LinphoneActivity.instance().startActivity(intent);
-        } else {
-            // This flag is required to start an Activity from a Service context
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(intent);
         }
+        // When backgrounded, the incoming-call notification opens the call screen.
+        // Direct background activity launches are restricted on modern Android.
     }
 
     /*Believe me or not, but knowing the application visibility state on Android is a nightmare.

@@ -91,7 +91,7 @@ public class ContactPresenceListAdapter extends RecyclerView.Adapter<ContactPres
 
             // Vedi se sono io... se sono io verifica disabled
             if (meSelf) {
-                boolean disabled = !_mProxyConfig.registerEnabled();
+                boolean disabled = !_mProxyConfig.isRegisterEnabled();
                 decorator = new MainPresenceDecorator(presenceUser.getMainPresence(disabled));
             } else {
                 decorator = new MainPresenceDecorator(presenceUser.mainPresence);

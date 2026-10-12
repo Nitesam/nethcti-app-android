@@ -81,6 +81,16 @@
 # OkHttp platform used only on JVM and when Conscrypt dependency is available.
 -dontwarn okhttp3.internal.platform.ConscryptPlatform
 -dontwarn org.conscrypt.ConscryptHostnameVerifier
+# Optional JVM TLS providers, selected by OkHttp only when present at runtime.
+# Android uses its platform TLS provider. Keep this list specific to missing optional types.
+-dontwarn org.conscrypt.Conscrypt
+-dontwarn org.conscrypt.Conscrypt$Version
+-dontwarn org.bouncycastle.jsse.BCSSLParameters
+-dontwarn org.bouncycastle.jsse.BCSSLSocket
+-dontwarn org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
+-dontwarn org.openjsse.javax.net.ssl.SSLParameters
+-dontwarn org.openjsse.javax.net.ssl.SSLSocket
+-dontwarn org.openjsse.net.ssl.OpenJSSE
 ##---------------End: proguard configuration for OkHttp  ----------
 
 -printseeds obfuscation/seeds.txt

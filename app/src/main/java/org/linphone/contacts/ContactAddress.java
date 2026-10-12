@@ -19,11 +19,12 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+import org.linphone.core.Friend;
 import android.view.View;
 import java.io.Serializable;
 import org.linphone.core.Address;
 import org.linphone.core.Factory;
-import org.linphone.core.FriendCapability;
+
 
 public class ContactAddress implements Serializable {
     private LinphoneContact mContact;
@@ -118,7 +119,7 @@ public class ContactAddress implements Serializable {
         return mPhoneNumber;
     }
 
-    public boolean hasCapability(FriendCapability capability) {
+    public boolean hasCapability(Friend.Capability capability) {
         return mContact != null && mContact.hasFriendCapability(capability);
     }
 

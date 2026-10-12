@@ -228,7 +228,7 @@ class PresenceStatusActivity : AppCompatActivity(), Callback<MutableList<String>
 
     fun disableSdk(): Boolean {
         mProxyConfig?.apply {
-            if (!registerEnabled()) {
+            if (!isRegisterEnabled) {
                 if (DEBUG)
                     Log.i(TAG, "Account SDK già disabilitato")
                 return false
@@ -241,7 +241,7 @@ class PresenceStatusActivity : AppCompatActivity(), Callback<MutableList<String>
 
     fun enableSdk(): Boolean {
         mProxyConfig?.apply {
-            if (registerEnabled()) {
+            if (isRegisterEnabled) {
                 if (DEBUG)
                     Log.i(TAG, "Account SDK già abilitato")
                 return false
@@ -255,7 +255,7 @@ class PresenceStatusActivity : AppCompatActivity(), Callback<MutableList<String>
     private fun setSdkDisableStatus(disable: Boolean) {
         mProxyConfig?.apply {
             edit()
-            enableRegister(!disable)
+            isRegisterEnabled = !disable
             done()
         }
         if (DEBUG)

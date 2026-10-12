@@ -358,7 +358,7 @@ public class UsersByPresenceFragment extends Fragment implements
     private void setMePresenceStatus() {
         if (_nethUser == null) return;
 
-        boolean disabled = !mProxyConfig.registerEnabled();
+        boolean disabled = !mProxyConfig.isRegisterEnabled();
         PresenceDecorator decorator = new PresenceDecorator(_nethUser.getPresence(disabled));
 
         Drawable backgroundPresenceSquare = ContextCompat
@@ -556,7 +556,7 @@ public class UsersByPresenceFragment extends Fragment implements
         } else if (v.getId() == R.id.cnstrnt_status) {
             constraintStatus.setEnabled(false);
             Intent gotoStatusIntent = new Intent(getContext(), PresenceStatusActivity.class);
-            boolean disabled = !mProxyConfig.registerEnabled();
+            boolean disabled = !mProxyConfig.isRegisterEnabled();
             gotoStatusIntent.putExtra(STATUS_SELECTED, _nethUser == null ? null :_nethUser.getPresence(disabled));
             startActivityForResult(gotoStatusIntent, PRESENCE_STATUS_LIST_REQUEST);
         } else if (v.getId() == R.id.cancel) {

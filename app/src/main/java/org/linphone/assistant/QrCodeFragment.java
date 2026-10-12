@@ -61,8 +61,8 @@ public class QrCodeFragment extends Fragment {
     }
 
     private void enableQrcodeReader(boolean enable) {
-        LinphoneManager.getLc().enableQrcodeVideoPreview(enable);
-        LinphoneManager.getLc().enableVideoPreview(enable);
+        LinphoneManager.getLc().setQrcodeVideoPreviewEnabled(enable);
+        LinphoneManager.getLc().setVideoPreviewEnabled(enable);
         if (enable) {
             LinphoneManager.getLc().addListener(mListener);
         } else {

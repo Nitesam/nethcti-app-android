@@ -1,0 +1,9 @@
+INSTRUMENTATION_RESULT: background_rtp_packets=125/94
+INSTRUMENTATION_RESULT: call_states=OutgoingInit OutgoingProgress Connected StreamsRunning End Released IncomingReceived Connected StreamsRunning End Released
+INSTRUMENTATION_RESULT: foreground_service_type=132
+INSTRUMENTATION_RESULT: incoming=RTP and hangup passed
+INSTRUMENTATION_RESULT: privacy=No library/storage/phone permissions; selected content URI copied successfully
+INSTRUMENTATION_RESULT: rtp_kbit_per_second=68.57143/52.2449
+INSTRUMENTATION_RESULT: stream=Local call(s), bidirectional RTP, background audio packets and hangup passed.
+
+INSTRUMENTATION_CODE: -1

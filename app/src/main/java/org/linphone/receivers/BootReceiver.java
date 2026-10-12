@@ -32,16 +32,21 @@ public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         LinphonePreferences.instance().setContext(context);
-        if (intent.getAction().equalsIgnoreCase(Intent.ACTION_SHUTDOWN)) {
+        if (Intent.ACTION_SHUTDOWN.equals(intent.getAction())) {
             android.util.Log.d(
                     "LinphoneBootReceiver",
                     "Device is shutting down, destroying Core to unregister");
             LinphoneManager.destroy();
-        } else {
+        } else if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
             boolean autostart = LinphonePreferences.instance().isAutoStartEnabled();
             android.util.Log.i(
                     "LinphoneBootReceiver", "Device is starting, auto_start is " + autostart);
             if (autostart && !LinphoneService.isReady()) {
+                // Android 15+ forbids starting a phone-call service at boot.
+                if (android.os.Build.VERSION.SDK_INT >= 35) {
+                    showRestartNotification(context);
+                    return;
+                }
                 Intent lLinphoneServiceIntent = new Intent(Intent.ACTION_MAIN);
                 lLinphoneServiceIntent.setClass(context, LinphoneService.class);
                 lLinphoneServiceIntent.putExtra("ForceStartForeground", true);
@@ -49,5 +54,23 @@ public class BootReceiver extends BroadcastReceiver {
                 Compatibility.startService(context, lLinphoneServiceIntent);
             }
         }
+    }
+
+    private void showRestartNotification(Context context) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context,
+                android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+        android.app.NotificationManager manager = context.getSystemService(android.app.NotificationManager.class);
+        String channel = "restart_after_boot";
+        manager.createNotificationChannel(new android.app.NotificationChannel(channel,
+                context.getString(org.linphone.R.string.app_name), android.app.NotificationManager.IMPORTANCE_DEFAULT));
+        android.app.PendingIntent open = android.app.PendingIntent.getActivity(context, 4,
+                new Intent(context, org.linphone.LinphoneLauncherActivity.class),
+                android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+        manager.notify(4, new androidx.core.app.NotificationCompat.Builder(context, channel)
+                .setSmallIcon(org.linphone.R.drawable.ic_nethesis_24)
+                .setContentTitle(context.getString(org.linphone.R.string.app_name))
+                .setContentText(context.getString(org.linphone.R.string.restart_after_boot))
+                .setContentIntent(open).setAutoCancel(true).build());
     }
 }

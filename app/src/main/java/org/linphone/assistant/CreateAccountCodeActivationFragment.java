@@ -38,11 +38,11 @@ import androidx.fragment.app.Fragment;
 import org.linphone.LinphoneManager;
 import org.linphone.R;
 import org.linphone.core.AccountCreator;
-import org.linphone.core.AccountCreatorListener;
+import org.linphone.compatibility.DefaultAccountCreatorListener;
 import org.linphone.settings.LinphonePreferences;
 
 public class CreateAccountCodeActivationFragment extends Fragment
-        implements AccountCreatorListener {
+        implements DefaultAccountCreatorListener {
     private String mUsername, mPhone, mDialcode;
     private TextView mTitle, mPhonenumber;
     private EditText mCode;
@@ -70,7 +70,7 @@ public class CreateAccountCodeActivationFragment extends Fragment
         mAccountCreator =
                 LinphoneManager.getLc()
                         .createAccountCreator(LinphonePreferences.instance().getXmlrpcUrl());
-        mAccountCreator.setListener(this);
+        mAccountCreator.addListener(this);
         mAccountCreator.setUsername(mUsername);
         mAccountCreator.setPhoneNumber(mPhone, mDialcode);
 

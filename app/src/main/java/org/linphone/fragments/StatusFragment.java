@@ -338,7 +338,7 @@ public class StatusFragment extends Fragment {
             }
 
             Call call = lc.getCurrentCall();
-            if (mIsInCall && (call != null || lc.getConferenceSize() > 1 || lc.getCallsNb() > 0)) {
+            if (mIsInCall && (call != null || lc.isInConference() || lc.getCallsNb() > 0)) {
                 if (call != null) {
                     startCallQuality();
                     refreshStatusItems(call);

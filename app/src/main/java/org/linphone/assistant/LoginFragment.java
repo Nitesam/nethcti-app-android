@@ -54,6 +54,34 @@ import retrofit2.Response;
 public class LoginFragment extends Fragment implements OnClickListener, TextWatcher {
     private EditText mLogin, mPassword, mDomain;
     private Button mApply;
+    private Runnable pendingNetworkAction;
+    private final androidx.activity.result.ActivityResultLauncher<String> localNetworkPermission =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.RequestPermission(), granted -> {
+                Runnable action = pendingNetworkAction;
+                pendingNetworkAction = null;
+                if (!granted && isAdded()) {
+                    Toast.makeText(requireContext(), R.string.local_network_permission_denied, Toast.LENGTH_LONG).show();
+                }
+                // A public PBX can still be reached if LAN access was declined.
+                if (action != null && isAdded()) action.run();
+            });
+
+    private void withLocalNetworkPermission(Runnable action) {
+        if (android.os.Build.VERSION.SDK_INT >= 37
+                && androidx.core.content.ContextCompat.checkSelfPermission(requireContext(),
+                        android.Manifest.permission.ACCESS_LOCAL_NETWORK)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            pendingNetworkAction = action;
+            localNetworkPermission.launch(android.Manifest.permission.ACCESS_LOCAL_NETWORK);
+        } else {
+            action.run();
+        }
+    }
+
+    @Override public void onDestroyView() {
+        pendingNetworkAction = null;
+        super.onDestroyView();
+    }
 
     @Override
     public View onCreateView(
@@ -95,7 +123,10 @@ public class LoginFragment extends Fragment implements OnClickListener, TextWatc
             }
 
             // performNethLogin(separated[0], separated[1], separated[2]); Before the AuthToken.
-            manageLoginResponse(String.format("%s:%s", separated[0], separated[1]), separated[2]);
+            view.post(() -> {
+                if (isAdded()) withLocalNetworkPermission(() ->
+                        manageLoginResponse(String.format("%s:%s", separated[0], separated[1]), separated[2]));
+            });
         }
 
         return view;
@@ -127,10 +158,10 @@ public class LoginFragment extends Fragment implements OnClickListener, TextWatc
                         .displayLoginLinphone(
                                 mLogin.getText().toString(), mPassword.getText().toString());
             } else {
-                performNethLogin(
+                withLocalNetworkPermission(() -> performNethLogin(
                         mLogin.getText().toString(),
                         mPassword.getText().toString(),
-                        mDomain.getText().toString());
+                        mDomain.getText().toString()));
                 /*
                  * We have forced the user to use TLS instead other protocols.
                  * We don't need the userid and displayname: removed.

@@ -65,14 +65,14 @@ public class CallManager {
         CallParams params = lc.createCallParams(null);
         getBandwidthManager().updateWithProfileSettings(params);
 
-        if (videoEnabled && params.videoEnabled()) {
-            params.enableVideo(true);
+        if (videoEnabled && params.isVideoEnabled()) {
+            params.setVideoEnabled(true);
         } else {
-            params.enableVideo(false);
+            params.setVideoEnabled(false);
         }
 
         if (lowBandwidth) {
-            params.enableLowBandwidth(true);
+            params.setLowBandwidthEnabled(true);
             Log.d("Low bandwidth enabled in call params");
         }
 
@@ -107,13 +107,13 @@ public class CallManager {
         }
         CallParams params = lc.createCallParams(lCall);
 
-        if (params.videoEnabled()) return false;
+        if (params.isVideoEnabled()) return false;
 
         // Check if video possible regarding bandwidth limitations
         getBandwidthManager().updateWithProfileSettings(params);
 
         // Abort if not enough bandwidth...
-        if (!params.videoEnabled()) {
+        if (!params.isVideoEnabled()) {
             return false;
         }
 

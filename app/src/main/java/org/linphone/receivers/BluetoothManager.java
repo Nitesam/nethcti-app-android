@@ -85,13 +85,20 @@ public class BluetoothManager extends BroadcastReceiver {
         filter.addAction(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED);
         filter.addAction(BluetoothAdapter.ACTION_CONNECTION_STATE_CHANGED);
         filter.addAction(BluetoothHeadset.ACTION_VENDOR_SPECIFIC_HEADSET_EVENT);
-        mContext.registerReceiver(this, filter);
+        androidx.core.content.ContextCompat.registerReceiver(mContext, this, filter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
         android.util.Log.d("BluetoothManager", "[Bluetooth] Receiver started");
 
         startBluetooth();
     }
 
+    public void retryBluetoothConnection() {
+        if (ensureInit()) startBluetooth();
+    }
+
     private void startBluetooth() {
+        if (android.os.Build.VERSION.SDK_INT >= 31
+                && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) return;
         if (mIsBluetoothConnected) {
             android.util.Log.e("BluetoothManager", "[Bluetooth] Already started, skipping...");
             return;
@@ -164,6 +171,9 @@ public class BluetoothManager extends BroadcastReceiver {
 
     public boolean routeAudioToBluetooth() {
         ensureInit();
+        if (android.os.Build.VERSION.SDK_INT >= 31
+                && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED) return false;
 
         if (mBluetoothAdapter != null
                 && mBluetoothAdapter.isEnabled()
@@ -217,7 +227,7 @@ public class BluetoothManager extends BroadcastReceiver {
     }
 
     public boolean isUsingBluetoothAudioRoute() {
-        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+        if (android.os.Build.VERSION.SDK_INT >= 31 && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             return false;
         }
         return mBluetoothHeadset != null
@@ -226,7 +236,7 @@ public class BluetoothManager extends BroadcastReceiver {
     }
 
     public boolean isBluetoothHeadsetAvailable() {
-        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+        if (android.os.Build.VERSION.SDK_INT >= 31 && ActivityCompat.checkSelfPermission(mContext, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             return false;
         }
         ensureInit();

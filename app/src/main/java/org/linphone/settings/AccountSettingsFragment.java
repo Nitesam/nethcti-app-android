@@ -383,7 +383,7 @@ public class AccountSettingsFragment extends Fragment {
                     public void onBoolValueChanged(boolean newValue) {
                         if (mProxyConfig != null) {
                             mProxyConfig.edit();
-                            mProxyConfig.enableRegister(!newValue);
+                            mProxyConfig.setRegisterEnabled(!newValue);
                             mProxyConfig.done();
                         } else {
                             Log.e("[Account Settings] No proxy config !");
@@ -443,7 +443,7 @@ public class AccountSettingsFragment extends Fragment {
                             }
 
                             if (natPolicy != null) {
-                                natPolicy.enableIce(newValue);
+                                natPolicy.setIceEnabled(newValue);
                             }
                             mProxyConfig.done();
                         } else {
@@ -460,7 +460,7 @@ public class AccountSettingsFragment extends Fragment {
                             mProxyConfig.edit();
                             mProxyConfig.setAvpfMode(
                                     newValue ? AVPFMode.Enabled : AVPFMode.Disabled);
-                            mAvpfInterval.setEnabled(mProxyConfig.avpfEnabled());
+                            mAvpfInterval.setEnabled(mProxyConfig.isAvpfEnabled());
                             mProxyConfig.done();
                         } else {
                             Log.e("[Account Settings] No proxy config !");
@@ -606,9 +606,9 @@ public class AccountSettingsFragment extends Fragment {
             mPrefix.setValue(mProxyConfig.getDialPrefix());
 
             mAvpfInterval.setValue(mProxyConfig.getAvpfRrInterval());
-            mAvpfInterval.setEnabled(mProxyConfig.avpfEnabled());
+            mAvpfInterval.setEnabled(mProxyConfig.isAvpfEnabled());
 
-            mDisable.setChecked(!mProxyConfig.registerEnabled());
+            mDisable.setChecked(!mProxyConfig.isRegisterEnabled());
 
             mUseAsDefault.setChecked(
                     core != null && mProxyConfig.equals(core.getDefaultProxyConfig()));
@@ -616,11 +616,11 @@ public class AccountSettingsFragment extends Fragment {
 
             mOutboundProxy.setChecked(mProxyConfig.getRoutes() != null);
 
-            mIce.setChecked(natPolicy.iceEnabled());
+            mIce.setChecked(natPolicy.isIceEnabled());
             mIce.setEnabled(
                     natPolicy.getStunServer() != null && !natPolicy.getStunServer().isEmpty());
 
-            mAvpf.setChecked(mProxyConfig.avpfEnabled());
+            mAvpf.setChecked(mProxyConfig.isAvpfEnabled());
 
             mReplacePlusBy00.setChecked(mProxyConfig.getDialEscapePlus());
 

@@ -69,7 +69,7 @@ import org.linphone.LinphoneManager;
 import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.core.AccountCreator;
-import org.linphone.core.AccountCreatorListener;
+import org.linphone.compatibility.DefaultAccountCreatorListener;
 import org.linphone.core.Address;
 import org.linphone.core.AuthInfo;
 import org.linphone.core.ConfiguringState;
@@ -96,7 +96,7 @@ import java.util.List;
 public class AssistantActivity extends ThemableActivity
         implements OnClickListener,
                 ActivityCompat.OnRequestPermissionsResultCallback,
-                AccountCreatorListener {
+                DefaultAccountCreatorListener {
     private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 201;
     private static final int PERMISSIONS_REQUEST_CAMERA = 202;
 
@@ -198,7 +198,7 @@ public class AssistantActivity extends ThemableActivity
             mAccountCreator =
                     LinphoneManager.getLc()
                             .createAccountCreator(LinphonePreferences.instance().getXmlrpcUrl());
-            mAccountCreator.setListener(this);
+            mAccountCreator.addListener(this);
         }
 
         mCountryListAdapter = new CountryListAdapter(getApplicationContext());
@@ -361,7 +361,7 @@ public class AssistantActivity extends ThemableActivity
     }
 
     @Override
-    public void onBackPressed() {
+    protected void onBackRequested() {
         if (mIsLink) {
             return;
         }
@@ -370,7 +370,7 @@ public class AssistantActivity extends ThemableActivity
             // displayRemoteProvisioning("");
             displayLoginGeneric();
         } else {
-            super.onBackPressed();
+            super.onBackRequested();
         }
     }
 
@@ -987,7 +987,7 @@ public class AssistantActivity extends ThemableActivity
             mIsLink = true;
             displayCreateAccount();
         }
-        if (mAccountCreator != null) mAccountCreator.setListener(null);
+        if (mAccountCreator != null) mAccountCreator.removeListener(this);
     }
 
     @Override

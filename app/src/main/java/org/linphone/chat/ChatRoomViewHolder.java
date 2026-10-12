@@ -31,7 +31,7 @@ import org.linphone.contacts.LinphoneContact;
 import org.linphone.core.Address;
 import org.linphone.core.ChatMessage;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomCapabilities;
+
 import org.linphone.core.Content;
 import org.linphone.core.Participant;
 import org.linphone.utils.LinphoneUtils;
@@ -124,12 +124,12 @@ public class ChatRoomViewHolder extends RecyclerView.ViewHolder
 
     public String getContact(ChatRoom mRoom) {
         Address contactAddress = mRoom.getPeerAddress();
-        if (mRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())
+        if (mRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())
                 && mRoom.getParticipants().length > 0) {
             contactAddress = mRoom.getParticipants()[0].getAddress();
         }
 
-        if (mRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+        if (mRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             LinphoneContact contact;
             contact = ContactsManager.getInstance().findContactFromAddress(contactAddress);
             if (contact != null) {
@@ -141,9 +141,9 @@ public class ChatRoomViewHolder extends RecyclerView.ViewHolder
     }
 
     public void getAvatar(ChatRoom mRoom) {
-        if (mRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+        if (mRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             LinphoneContact contact = null;
-            if (mRoom.hasCapability(ChatRoomCapabilities.Basic.toInt())) {
+            if (mRoom.hasCapability(ChatRoom.Capabilities.Basic.toInt())) {
                 contact =
                         ContactsManager.getInstance()
                                 .findContactFromAddress(mRoom.getPeerAddress());
@@ -156,14 +156,14 @@ public class ChatRoomViewHolder extends RecyclerView.ViewHolder
                 }
             }
             if (contact != null) {
-                if (mRoom.hasCapability(ChatRoomCapabilities.Encrypted.toInt())) {
+                if (mRoom.hasCapability(ChatRoom.Capabilities.Encrypted.toInt())) {
                     ContactAvatar.displayAvatar(contact, mRoom.getSecurityLevel(), avatarLayout);
                 } else {
                     ContactAvatar.displayAvatar(contact, avatarLayout);
                 }
             } else {
                 Address remoteAddr = null;
-                if (mRoom.hasCapability(ChatRoomCapabilities.Encrypted.toInt())) {
+                if (mRoom.hasCapability(ChatRoom.Capabilities.Encrypted.toInt())) {
                     Participant[] participants = mRoom.getParticipants();
                     if (participants.length > 0) {
                         remoteAddr = participants[0].getAddress();
@@ -175,14 +175,14 @@ public class ChatRoomViewHolder extends RecyclerView.ViewHolder
                 }
 
                 String username = LinphoneUtils.getAddressDisplayName(remoteAddr);
-                if (mRoom.hasCapability(ChatRoomCapabilities.Encrypted.toInt())) {
+                if (mRoom.hasCapability(ChatRoom.Capabilities.Encrypted.toInt())) {
                     ContactAvatar.displayAvatar(username, mRoom.getSecurityLevel(), avatarLayout);
                 } else {
                     ContactAvatar.displayAvatar(username, avatarLayout);
                 }
             }
         } else {
-            if (mRoom.hasCapability(ChatRoomCapabilities.Encrypted.toInt())) {
+            if (mRoom.hasCapability(ChatRoom.Capabilities.Encrypted.toInt())) {
                 ContactAvatar.displayGroupChatAvatar(mRoom.getSecurityLevel(), avatarLayout);
             } else {
                 ContactAvatar.displayGroupChatAvatar(avatarLayout);

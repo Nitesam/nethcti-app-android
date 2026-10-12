@@ -79,7 +79,7 @@ public class EchoCancellerCalibrationFragment extends Fragment implements XmlRpc
                         .createXmlRpcSession(LinphonePreferences.instance().getXmlrpcUrl());
         mXmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.None, "add_ec_calibration_result");
-        mXmlRpcRequest.setListener(this);
+        mXmlRpcRequest.addListener(this);
 
         LinphoneManager.getLc().addListener(mListener);
         LinphoneManager.getInstance().startEcCalibration();

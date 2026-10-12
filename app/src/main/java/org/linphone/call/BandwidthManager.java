@@ -47,10 +47,10 @@ public class BandwidthManager {
         if (callParams != null) { // in call
             // Update video parm if
             if (!isVideoPossible()) { // NO VIDEO
-                callParams.enableVideo(false);
+                callParams.setVideoEnabled(false);
                 callParams.setAudioBandwidthLimit(40);
             } else {
-                callParams.enableVideo(true);
+                callParams.setVideoEnabled(true);
                 callParams.setAudioBandwidthLimit(0); // disable limitation
             }
         }

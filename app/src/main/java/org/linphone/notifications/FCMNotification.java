@@ -7,6 +7,7 @@ import android.provider.Settings;
 import android.util.Log;
 
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.FirebaseApp;
 import com.google.gson.GsonBuilder;
 
 import org.linphone.R;
@@ -40,6 +41,7 @@ public class FCMNotification {
      */
     @SuppressLint("HardwareIds")
     public static void sendRegistrationId(Context context, String user) {
+        if (FirebaseApp.getApps(context).isEmpty()) return;
         String deviceId =
                 Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
 
@@ -63,6 +65,7 @@ public class FCMNotification {
      * @param userId the userId
      */
     public static void updateRegistrationInfo(Context context, String userId) {
+        if (FirebaseApp.getApps(context).isEmpty()) return;
         FirebaseMessaging.getInstance().getToken().addOnSuccessListener(installationTokenResult -> {
             String regId = installationTokenResult;
             if (!regId.equals("")) {

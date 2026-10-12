@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+import org.linphone.core.Friend;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -30,7 +31,7 @@ import org.linphone.LinphoneActivity;
 import org.linphone.LinphoneManager;
 import org.linphone.R;
 import org.linphone.core.Address;
-import org.linphone.core.FriendCapability;
+
 import org.linphone.core.PresenceBasicStatus;
 import org.linphone.core.PresenceModel;
 import org.linphone.core.ProxyConfig;
@@ -133,13 +134,13 @@ public class SearchContactsAdapter extends RecyclerView.Adapter<SearchContactVie
             }
             ContactAvatar.displayAvatar(
                     contact,
-                    contact.hasFriendCapability(FriendCapability.LimeX3Dh),
+                    contact.hasFriendCapability(Friend.Capability.LimeX3Dh),
                     holder.avatarLayout);
 
             if ((!mIsOnlyOnePersonSelection
-                            && !searchResult.hasCapability(FriendCapability.GroupChat))
+                            && !searchResult.hasCapability(Friend.Capability.GroupChat))
                     || (mSecurityEnabled
-                            && !searchResult.hasCapability(FriendCapability.LimeX3Dh))) {
+                            && !searchResult.hasCapability(Friend.Capability.LimeX3Dh))) {
                 // Disable row, contact doesn't have the required capabilities
                 holder.disabled.setVisibility(View.VISIBLE);
             } else if (mSecurityEnabled || !mIsOnlyOnePersonSelection) {
@@ -245,7 +246,9 @@ public class SearchContactsAdapter extends RecyclerView.Adapter<SearchContactVie
         SearchResult[] searchResults =
                 ContactsManager.getInstance()
                         .getMagicSearch()
-                        .getContactListFromFilter(search, mOnlySipContact ? domain : "");
+                        .getContactsList(search, mOnlySipContact ? domain : "",
+                                org.linphone.core.MagicSearch.Source.All.toInt(),
+                                org.linphone.core.MagicSearch.Aggregation.None);
 
         for (SearchResult sr : searchResults) {
             if (LinphoneActivity.instance()

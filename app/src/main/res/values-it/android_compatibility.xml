@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="restart_after_boot">Apri NethCTI per riconnetterti dopo il riavvio del telefono</string>
+    <string name="local_network_permission_denied">Accesso alla rete locale negato. Il centralino sulla rete locale potrebbe non essere raggiungibile.</string>
+    <string name="choose_attachment">Scegli un file</string>
+    <string name="take_attachment_photo">Scatta una foto</string>
+    <string name="attachment_open_failed">Impossibile aprire questo allegato.</string>
+</resources>

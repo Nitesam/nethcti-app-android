@@ -31,7 +31,7 @@ import org.linphone.R;
 import org.linphone.core.Address;
 import org.linphone.core.Core;
 import org.linphone.core.Friend;
-import org.linphone.core.FriendCapability;
+
 import org.linphone.core.FriendList;
 import org.linphone.core.PresenceBasicStatus;
 import org.linphone.core.PresenceModel;
@@ -329,7 +329,7 @@ public class LinphoneContact extends AndroidContact
 
         if (!isFriend()) {
             mFriend = lc.createFriend();
-            mFriend.enableSubscribes(false);
+            mFriend.setSubscribesEnabled(false);
             mFriend.setIncSubscribePolicy(SubscribePolicy.SPDeny);
             if (isAndroidContact()) {
                 mFriend.setRefKey(getAndroidId());
@@ -436,7 +436,7 @@ public class LinphoneContact extends AndroidContact
         return PresenceBasicStatus.Closed;
     }
 
-    public boolean hasPresenceModelForUriOrTelCapability(String uri, FriendCapability capability) {
+    public boolean hasPresenceModelForUriOrTelCapability(String uri, Friend.Capability capability) {
         if (mFriend != null && mFriend.getPresenceModelForUriOrTel(uri) != null) {
             return mFriend.getPresenceModelForUriOrTel(uri).hasCapability(capability);
         }
@@ -447,7 +447,7 @@ public class LinphoneContact extends AndroidContact
         LinphoneContact contact = new LinphoneContact();
         Friend friend = LinphoneManager.getLc().createFriend();
         // Disable subscribes for now
-        friend.enableSubscribes(false);
+        friend.setSubscribesEnabled(false);
         friend.setIncSubscribePolicy(SubscribePolicy.SPDeny);
         contact.mFriend = friend;
         friend.setUserData(contact);
@@ -562,7 +562,7 @@ public class LinphoneContact extends AndroidContact
         }
     }
 
-    public boolean hasFriendCapability(FriendCapability capability) {
+    public boolean hasFriendCapability(Friend.Capability capability) {
         if (!isFriend()) return false;
 
         return getFriend().hasCapability(capability);

@@ -29,6 +29,8 @@ import org.linphone.core.tools.Log;
 public class HookReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
+        if (!"com.base.module.phone.HOOKEVENT".equals(intent.getAction())
+                || !intent.hasExtra("hookoff") || !LinphoneManager.isInstanciated()) return;
         if (isOrderedBroadcast()) abortBroadcast();
         Bundle extras = intent.getExtras();
         boolean b = extras.getBoolean("hookoff");

@@ -51,7 +51,7 @@ import org.linphone.contacts.LinphoneContact;
 import org.linphone.core.Address;
 import org.linphone.core.ChatMessage;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomListener;
+import org.linphone.compatibility.DefaultChatRoomListener;
 import org.linphone.core.ChatRoomListenerStub;
 import org.linphone.core.ChatRoomParams;
 import org.linphone.core.Core;
@@ -64,7 +64,7 @@ import org.linphone.utils.LinphoneUtils;
 
 import java.util.ArrayList;
 
-public class GroupInfoFragment extends Fragment implements ChatRoomListener {
+public class GroupInfoFragment extends Fragment implements DefaultChatRoomListener {
     private ImageView mBackButton, mConfirmButton, mAddParticipantsButton;
     private RelativeLayout mAddParticipantsLayout;
     private Address mGroupChatRoomAddress;
@@ -343,8 +343,8 @@ public class GroupInfoFragment extends Fragment implements ChatRoomListener {
                             }
 
                             ChatRoomParams params = core.createDefaultChatRoomParams();
-                            params.enableEncryption(mIsEncryptionEnabled);
-                            params.enableGroup(true);
+                            params.setEncryptionEnabled(mIsEncryptionEnabled);
+                            params.setGroupEnabled(true);
 
                             mTempChatRoom =
                                     core.createChatRoom(

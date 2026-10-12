@@ -48,7 +48,7 @@ import org.linphone.LinphoneManager;
 import org.linphone.R;
 import org.linphone.core.AccountCreator;
 import org.linphone.core.AccountCreator.Status;
-import org.linphone.core.AccountCreatorListener;
+import org.linphone.compatibility.DefaultAccountCreatorListener;
 import org.linphone.core.DialPlan;
 import org.linphone.settings.LinphonePreferences;
 import org.linphone.utils.LinphoneUtils;
@@ -58,7 +58,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class CreateAccountFragment extends Fragment
-        implements CompoundButton.OnCheckedChangeListener, AccountCreatorListener {
+        implements CompoundButton.OnCheckedChangeListener, DefaultAccountCreatorListener {
     private final Pattern UPPER_CASE_REGEX = Pattern.compile("[A-Z]");
 
     private EditText mPhoneNumberEdit,
@@ -100,7 +100,7 @@ public class CreateAccountFragment extends Fragment
         mAccountCreator =
                 LinphoneManager.getLc()
                         .createAccountCreator(LinphonePreferences.instance().getXmlrpcUrl());
-        mAccountCreator.setListener(this);
+        mAccountCreator.addListener(this);
         mAccountCreator.setDomain(getString(R.string.default_domain));
 
         mInstruction = view.findViewById(R.id.message_create_account);
@@ -312,7 +312,7 @@ public class CreateAccountFragment extends Fragment
     @Override
     public void onPause() {
         super.onPause();
-        mAccountCreator.setListener(null);
+        mAccountCreator.removeListener(this);
     }
 
     @Override

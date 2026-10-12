@@ -28,6 +28,17 @@ import org.linphone.settings.LinphonePreferences;
 
 public class ThemableActivity extends FragmentActivity {
 
+    private androidx.activity.OnBackPressedCallback backCallback;
+
+    protected void onBackRequested() {
+        backCallback.setEnabled(false);
+        try {
+            getOnBackPressedDispatcher().onBackPressed();
+        } finally {
+            backCallback.setEnabled(true);
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (LinphonePreferences.instance().isDarkModeEnabled()) {
@@ -35,5 +46,23 @@ public class ThemableActivity extends FragmentActivity {
         }
 
         super.onCreate(savedInstanceState);
+        backCallback = new androidx.activity.OnBackPressedCallback(true) {
+            @Override public void handleOnBackPressed() {
+                ThemableActivity.this.onBackRequested();
+            }
+        };
+        getOnBackPressedDispatcher().addCallback(this, backCallback);
+        // Keep legacy layouts clear of system bars under enforced edge-to-edge.
+        android.view.View content = findViewById(android.R.id.content);
+        final int left = content.getPaddingLeft(), top = content.getPaddingTop();
+        final int right = content.getPaddingRight(), bottom = content.getPaddingBottom();
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(content, (view, insets) -> {
+            androidx.core.graphics.Insets bars = insets.getInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                    | androidx.core.view.WindowInsetsCompat.Type.displayCutout());
+            view.setPadding(left + bars.left, top + bars.top, right + bars.right, bottom + bars.bottom);
+            return androidx.core.view.WindowInsetsCompat.CONSUMED;
+        });
+        androidx.core.view.ViewCompat.requestApplyInsets(content);
     }
 }

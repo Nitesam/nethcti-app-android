@@ -151,7 +151,17 @@ public class LinphoneActivity extends LinphoneGenericActivity
     private static final int PERMISSIONS_REQUEST_OVERLAY = 206;
     private static final int PERMISSIONS_REQUEST_SYNC = 207;
     private static final int PERMISSIONS_RECORD_AUDIO_ECHO_CANCELLER = 209;
-    private static final int PERMISSIONS_READ_EXTERNAL_STORAGE_DEVICE_RINGTONE = 210;
+    private static final int PERMISSIONS_CORE = 210;
+    private Bundle pendingContactEdit;
+    private final androidx.activity.result.ActivityResultLauncher<String[]> contactEditPermission =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(), result -> {
+                if (checkPermission(Manifest.permission.READ_CONTACTS)
+                        && checkPermission(Manifest.permission.WRITE_CONTACTS) && pendingContactEdit != null) {
+                    ContactsManager.getInstance().enableContactsAccess();
+                    changeCurrentFragment(FragmentsAvailable.CONTACT_EDITOR, pendingContactEdit);
+                }
+                pendingContactEdit = null;
+            });
     private static final int PERMISSIONS_RECORD_AUDIO_ECHO_TESTER = 211;
 
     private static LinphoneActivity sInstance;
@@ -380,7 +390,6 @@ public class LinphoneActivity extends LinphoneGenericActivity
         LinphonePreferences.instance().setServiceNotificationVisibility(true);
         LinphoneService.instance().getNotificationManager().startForeground();
          */
-        LinphonePreferences.instance().enableOverlay(true);
         LinphonePreferences.instance().setMediaEncryption(MediaEncryption.SRTP);
     }
 
@@ -388,63 +397,26 @@ public class LinphoneActivity extends LinphoneGenericActivity
     protected void onStart() {
         super.onStart();
 
-        ArrayList<String> permissionsToAskFor = new ArrayList<>();
-        String[] permissionsToHave = {
-                // This one is to allow floating notifications
-                Manifest.permission.SYSTEM_ALERT_WINDOW,
-                // Required starting Android 9 to be able to start a foreground service
-                "android.permission.FOREGROUND_SERVICE",
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.WRITE_CONTACTS,
-                Manifest.permission.READ_CONTACTS,
-                Manifest.permission.CALL_PHONE,
-                Manifest.permission.CAMERA,
-                Manifest.permission.MANAGE_OWN_CALLS,
-                Manifest.permission.BIND_TELECOM_CONNECTION_SERVICE,
-                Manifest.permission.READ_PHONE_NUMBERS
-        };
-
-        if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            String[] permissionsForAPI33 = {
-                    Manifest.permission.READ_MEDIA_AUDIO,
-                    Manifest.permission.READ_MEDIA_IMAGES,
-                    Manifest.permission.READ_MEDIA_VIDEO,
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.POST_NOTIFICATIONS
-            };
-            for (String permissionToHave33 : permissionsForAPI33) {
-                if (!checkPermission(permissionToHave33)) {
-                    permissionsToAskFor.add(permissionToHave33);
-                }
-            }
+        // Only core communication permissions here, once. Optional features ask in context.
+        android.content.SharedPreferences permissionPrefs = getSharedPreferences("permission_prompts", MODE_PRIVATE);
+        ArrayList<String> permissions = new ArrayList<>();
+        if (android.os.Build.VERSION.SDK_INT >= 33
+                && !checkPermission(Manifest.permission.POST_NOTIFICATIONS)
+                && !permissionPrefs.getBoolean("notifications_asked", false)) {
+            permissions.add(Manifest.permission.POST_NOTIFICATIONS);
         }
-
-        for (String permissionToHave : permissionsToHave) {
-            if (!checkPermission(permissionToHave)) {
-                permissionsToAskFor.add(permissionToHave);
-            }
+        if (android.os.Build.VERSION.SDK_INT >= 37
+                && !checkPermission(Manifest.permission.ACCESS_LOCAL_NETWORK)
+                && !permissionPrefs.getBoolean("local_network_asked", false)) {
+            permissions.add(Manifest.permission.ACCESS_LOCAL_NETWORK);
         }
-
-        if (permissionsToAskFor.size() > 0) {
-            for (String permission : permissionsToAskFor) {
-                Log.i("[Permission] Asking for " + permission + " permission");
-            }
-            String[] permissions = new String[permissionsToAskFor.size()];
-            permissions = permissionsToAskFor.toArray(permissions);
-
-            KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-            boolean locked = km.inKeyguardRestrictedInputMode();
-            if (!locked) {
-                // This is to workaround an infinite loop of pause/start in LinphoneActivity issue
-                // if incoming call ends while screen if off and locked
-                ActivityCompat.requestPermissions(
-                        this, permissions, PERMISSIONS_READ_EXTERNAL_STORAGE_DEVICE_RINGTONE);
-            }
-        } else {
-            if (getResources().getBoolean(R.bool.check_for_update_when_app_starts)) {
-                checkForUpdate();
-            }
+        KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+        if (!permissions.isEmpty() && !km.inKeyguardRestrictedInputMode()) {
+            permissionPrefs.edit().putBoolean("notifications_asked", true)
+                    .putBoolean("local_network_asked", true).apply();
+            ActivityCompat.requestPermissions(this, permissions.toArray(new String[0]), PERMISSIONS_CORE);
+        } else if (getResources().getBoolean(R.bool.check_for_update_when_app_starts)) {
+            checkForUpdate();
         }
 
         if (checkPermission(Manifest.permission.READ_CONTACTS)) {
@@ -474,12 +446,14 @@ public class LinphoneActivity extends LinphoneGenericActivity
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putSerializable("mCurrentFragment", mCurrentFragment);
+        if (pendingContactEdit != null) outState.putBundle("pendingContactEdit", pendingContactEdit);
         super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
+        pendingContactEdit = savedInstanceState.getBundle("pendingContactEdit");
     }
 
     @Override
@@ -727,7 +701,7 @@ public class LinphoneActivity extends LinphoneGenericActivity
             checkForUpdate();
         }
 
-        if (permissions.length <= 0) return;
+        if (permissions.length == 0 || grantResults.length == 0) return;
 
         int readContactsI = -1;
         for (int i = 0; i < permissions.length; i++) {
@@ -746,6 +720,14 @@ public class LinphoneActivity extends LinphoneGenericActivity
                     && grantResults[i] == PackageManager.PERMISSION_GRANTED) {
                 LinphoneUtils.reloadVideoDevices();
             }
+            if (permissions[i].equals(Manifest.permission.BLUETOOTH_CONNECT)
+                    && grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                org.linphone.receivers.BluetoothManager.getInstance().retryBluetoothConnection();
+            }
+            if (permissions[i].equals(Manifest.permission.ACCESS_LOCAL_NETWORK)
+                    && grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                LinphoneManager.getLc().refreshRegisters();
+            }
         }
 
         if (readContactsI >= 0
@@ -760,12 +742,6 @@ public class LinphoneActivity extends LinphoneGenericActivity
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     ((AudioSettingsFragment) mFragment).startEchoCancellerCalibration();
                 }
-                break;
-            case PERMISSIONS_READ_EXTERNAL_STORAGE_DEVICE_RINGTONE:
-                if (permissions[0].compareTo(Manifest.permission.READ_EXTERNAL_STORAGE) != 0) break;
-                boolean enableRingtone = (grantResults[0] == PackageManager.PERMISSION_GRANTED);
-                LinphonePreferences.instance().enableDeviceRingtone(enableRingtone);
-                LinphoneManager.getInstance().enableDeviceRingtone(enableRingtone);
                 break;
             case PERMISSIONS_RECORD_AUDIO_ECHO_TESTER:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
@@ -1622,14 +1598,25 @@ public class LinphoneActivity extends LinphoneGenericActivity
         Bundle extras = new Bundle();
         extras.putSerializable("NewSipAdress", sipUri);
         extras.putSerializable("NewDisplayName", displayName);
-        changeCurrentFragment(FragmentsAvailable.CONTACT_EDITOR, extras);
+        openContactEditor(extras);
     }
 
     public void editContact(LinphoneContact contact, String sipUri) {
         Bundle extras = new Bundle();
         extras.putSerializable("Contact", contact);
         extras.putString("NewSipAdress", sipUri);
-        changeCurrentFragment(FragmentsAvailable.CONTACT_EDITOR, extras);
+        openContactEditor(extras);
+    }
+
+    private void openContactEditor(Bundle extras) {
+        if (checkPermission(Manifest.permission.READ_CONTACTS)
+                && checkPermission(Manifest.permission.WRITE_CONTACTS)) {
+            changeCurrentFragment(FragmentsAvailable.CONTACT_EDITOR, extras);
+        } else {
+            pendingContactEdit = extras;
+            contactEditPermission.launch(new String[] {
+                    Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS});
+        }
     }
 
     private void quit() {
@@ -1656,10 +1643,6 @@ public class LinphoneActivity extends LinphoneGenericActivity
         return true;
     }
 
-    public void checkAndRequestExternalStoragePermission() {
-        checkAndRequestPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE, 0);
-    }
-
     public void checkAndRequestReadContactsPermission() {
         checkAndRequestPermission(Manifest.permission.READ_CONTACTS, PERMISSIONS_REQUEST_SYNC);
     }
@@ -1676,31 +1659,6 @@ public class LinphoneActivity extends LinphoneGenericActivity
     public void checkAndRequestRecordAudioPermissionsForEchoTester() {
         checkAndRequestPermission(
                 Manifest.permission.RECORD_AUDIO, PERMISSIONS_RECORD_AUDIO_ECHO_TESTER);
-    }
-
-    public void checkAndRequestReadExternalStoragePermissionForDeviceRingtone() {
-        checkAndRequestPermission(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                PERMISSIONS_READ_EXTERNAL_STORAGE_DEVICE_RINGTONE);
-    }
-
-    public void checkAndRequestPermissionsToSendImage() {
-        ArrayList<String> permissionsToAskFor = new ArrayList<>();
-        String[] permissionsToHave = {
-                Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.CAMERA
-        };
-
-        for (String permissionToHave : permissionsToHave) {
-            if (!checkPermission(permissionToHave)) {
-                permissionsToAskFor.add(permissionToHave);
-            }
-        }
-
-        if (permissionsToAskFor.size() > 0) {
-            String[] permissions = new String[permissionsToAskFor.size()];
-            permissions = permissionsToAskFor.toArray(permissions);
-            ActivityCompat.requestPermissions(this, permissions, 0);
-        }
     }
 
     private void checkSyncPermission() {
@@ -1738,26 +1696,24 @@ public class LinphoneActivity extends LinphoneGenericActivity
         return mIsOnBackground;
     }
 
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
+    @Override
+    protected void onBackRequested() {
             switch (mCurrentFragment) {
                 case DIALER:
                 case CONTACTS_LIST:
                 case HISTORY_LIST:
                 case CHAT_LIST:
                 case DASHBOARD:
-                    if (LinphoneUtils.onKeyBackGoHome(this, keyCode, event)) {
-                        return true;
-                    }
-                    break;
+                    moveTaskToBack(true);
+                    return;
                 case GROUP_CHAT:
                     hideTopBar(); // just in case
                     LinphoneActivity.instance().goToChatList();
-                    return true;
+                    return;
                 case SETTINGS_SUBLEVEL:
                     if (!isTablet()) {
                         popBackStack();
-                        return true;
+                        return;
                     }
                 case SETTINGS:
                 case USERS_BY_PRESENCE:
@@ -1775,7 +1731,7 @@ public class LinphoneActivity extends LinphoneGenericActivity
                         hideTopBar();
                         LinphoneActivity.instance().displayDashboard();
                     }
-                    return true;
+                    return;
                 case EMPTY: //needed for manage back pressed when in subsettings
                     if (LinphoneManager.getLc().getProxyConfigList().length == 0) {
                             finish();
@@ -1784,8 +1740,7 @@ public class LinphoneActivity extends LinphoneGenericActivity
                 default:
                     break;
             }
-        }
-        return super.onKeyDown(keyCode, event);
+        super.onBackRequested();
     }
 
     // SIDE MENU

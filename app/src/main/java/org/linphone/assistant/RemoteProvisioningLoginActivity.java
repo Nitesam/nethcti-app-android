@@ -137,7 +137,7 @@ public class RemoteProvisioningLoginActivity extends ThemableActivity implements
     }
 
     @Override
-    public void onBackPressed() {
+    protected void onBackRequested() {
         cancelWizard();
     }
 }

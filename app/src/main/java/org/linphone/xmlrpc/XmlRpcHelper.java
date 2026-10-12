@@ -54,7 +54,7 @@ public class XmlRpcHelper {
             final XmlRpcListener listener, String username, String email, String password) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "create_account");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -82,7 +82,7 @@ public class XmlRpcHelper {
             final XmlRpcListener listener, String username, String password) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "get_account_expiration");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -114,7 +114,7 @@ public class XmlRpcHelper {
             String signature) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "update_expiration_date");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -144,7 +144,7 @@ public class XmlRpcHelper {
             final XmlRpcListener listener, String username, String password) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "activate_account");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -170,7 +170,7 @@ public class XmlRpcHelper {
     public void isAccountActivatedAsync(final XmlRpcListener listener, String username) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "check_account_activated");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -198,7 +198,7 @@ public class XmlRpcHelper {
             final XmlRpcListener listener, String username, String password) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "is_account_trial");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -222,7 +222,7 @@ public class XmlRpcHelper {
     public void isAccountAsync(final XmlRpcListener listener, String username) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "check_account_activated");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -250,7 +250,7 @@ public class XmlRpcHelper {
             final XmlRpcListener listener, String username, String password, String newEmail) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "change_email");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -282,7 +282,7 @@ public class XmlRpcHelper {
             String newPassword) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "change_password");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -314,7 +314,7 @@ public class XmlRpcHelper {
             String newPassword) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "change_hash");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -344,7 +344,7 @@ public class XmlRpcHelper {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(
                         XmlRpcArgType.String, "send_reset_account_password_email");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -371,7 +371,7 @@ public class XmlRpcHelper {
             final XmlRpcListener listener, String usernameOrEmail) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "resend_activation_email");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -397,7 +397,7 @@ public class XmlRpcHelper {
     public void sendUsernameByEmailAsync(final XmlRpcListener listener, String email) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "recover_username_from_email");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -424,7 +424,7 @@ public class XmlRpcHelper {
             final XmlRpcListener listener, String payload, String signature) {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(XmlRpcArgType.String, "check_payload_signature");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {
@@ -454,7 +454,7 @@ public class XmlRpcHelper {
         XmlRpcRequest xmlRpcRequest =
                 mXmlRpcSession.createRequest(
                         XmlRpcArgType.String, "get_remote_provisioning_filename");
-        xmlRpcRequest.setListener(
+        xmlRpcRequest.addListener(
                 new XmlRpcRequestListener() {
                     @Override
                     public void onResponse(XmlRpcRequest request) {

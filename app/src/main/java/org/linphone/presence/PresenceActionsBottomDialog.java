@@ -172,7 +172,7 @@ class PresenceActionsBottomDialog extends BottomSheetDialog implements View.OnCl
         btnSpy.setTextColor(getContext().getColorStateList(color));
 
         int backgroundColor = darkMode ? R.color.black_color : R.color.white_color;
-        linearContentActions.setBackgroundColor(backgroundColor);
+        linearContentActions.setBackgroundColor(ContextCompat.getColor(getContext(), backgroundColor));
         linearContentActions.setBackgroundTintList(getContext().getResources().getColorStateList(backgroundColor, null));
 
     }
@@ -242,34 +242,24 @@ class PresenceActionsBottomDialog extends BottomSheetDialog implements View.OnCl
 
     @Override
     public void onClick(View v) {
-        switch(v.getId()){
-            case (R.id.img_favorite):
-                star.setSelected(!star.isSelected());
-                break;
-            case (R.id.img_close):
-                onUserActionListener.onActionButtonPressed(ACTION_CLOSE_POPUP, null);
-                break;
-            case (R.id.btn_call):
-                onUserActionListener.onActionButtonPressed(ACTION_CALL, _presenceUser);
-                break;
-            case (R.id.btn_close):
-                onUserActionListener.onActionButtonPressed(ACTION_HANGUP, _presenceUser);
-                break;
-            case (R.id.btn_record):
-                onUserActionListener.onActionButtonPressed(ACTION_RECORD, _presenceUser);
-                break;
-            case (R.id.btn_intrude):
-                onUserActionListener.onActionButtonPressed(ACTION_INTRUDE, _presenceUser);
-                break;
-            case (R.id.btn_book):
-                onUserActionListener.onActionButtonPressed(ACTION_BOOK, _presenceUser);
-                break;
-            case (R.id.btn_pickup):
-                onUserActionListener.onActionButtonPressed(ACTION_PICKUP, _presenceUser);
-                break;
-            case (R.id.btn_spy):
-                onUserActionListener.onActionButtonPressed(ACTION_SPY, _presenceUser);
-                break;
+        if (v.getId() == R.id.img_favorite) {
+            star.setSelected(!star.isSelected());
+        } else if (v.getId() == R.id.img_close) {
+            onUserActionListener.onActionButtonPressed(ACTION_CLOSE_POPUP, null);
+        } else if (v.getId() == R.id.btn_call) {
+            onUserActionListener.onActionButtonPressed(ACTION_CALL, _presenceUser);
+        } else if (v.getId() == R.id.btn_close) {
+            onUserActionListener.onActionButtonPressed(ACTION_HANGUP, _presenceUser);
+        } else if (v.getId() == R.id.btn_record) {
+            onUserActionListener.onActionButtonPressed(ACTION_RECORD, _presenceUser);
+        } else if (v.getId() == R.id.btn_intrude) {
+            onUserActionListener.onActionButtonPressed(ACTION_INTRUDE, _presenceUser);
+        } else if (v.getId() == R.id.btn_book) {
+            onUserActionListener.onActionButtonPressed(ACTION_BOOK, _presenceUser);
+        } else if (v.getId() == R.id.btn_pickup) {
+            onUserActionListener.onActionButtonPressed(ACTION_PICKUP, _presenceUser);
+        } else if (v.getId() == R.id.btn_spy) {
+            onUserActionListener.onActionButtonPressed(ACTION_SPY, _presenceUser);
         }
     }
 }

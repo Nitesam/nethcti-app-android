@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+import org.linphone.core.ChatRoom;
 import android.graphics.Bitmap;
 import android.provider.MediaStore;
 import android.view.View;
@@ -31,7 +32,7 @@ import java.io.IOException;
 import org.linphone.LinphoneService;
 import org.linphone.R;
 import org.linphone.contacts.LinphoneContact;
-import org.linphone.core.ChatRoomSecurityLevel;
+
 import org.linphone.core.tools.Log;
 
 class ContactAvatarHolder {
@@ -74,7 +75,7 @@ public class ContactAvatar {
         return generatedAvatarText.toString().toUpperCase();
     }
 
-    private static void setSecurityLevel(ChatRoomSecurityLevel level, View v) {
+    private static void setSecurityLevel(ChatRoom.SecurityLevel level, View v) {
         ContactAvatarHolder holder = new ContactAvatarHolder(v);
         if (holder.securityLevel != null) {
             holder.securityLevel.setVisibility(View.VISIBLE);
@@ -141,7 +142,7 @@ public class ContactAvatar {
     }
 
     public static void displayAvatar(
-            String displayName, ChatRoomSecurityLevel securityLevel, View v) {
+            String displayName, ChatRoom.SecurityLevel securityLevel, View v) {
         displayAvatar(displayName, v);
         setSecurityLevel(securityLevel, v);
     }
@@ -222,7 +223,7 @@ public class ContactAvatar {
     }
 
     public static void displayAvatar(
-            LinphoneContact contact, ChatRoomSecurityLevel securityLevel, View v) {
+            LinphoneContact contact, ChatRoom.SecurityLevel securityLevel, View v) {
         displayAvatar(contact, v);
         setSecurityLevel(securityLevel, v);
     }
@@ -234,7 +235,7 @@ public class ContactAvatar {
         holder.securityLevel.setVisibility(View.GONE);
     }
 
-    public static void displayGroupChatAvatar(ChatRoomSecurityLevel level, View v) {
+    public static void displayGroupChatAvatar(ChatRoom.SecurityLevel level, View v) {
         displayGroupChatAvatar(v);
         setSecurityLevel(level, v);
     }

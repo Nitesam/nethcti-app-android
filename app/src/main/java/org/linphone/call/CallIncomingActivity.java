@@ -103,7 +103,7 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
                 && mCall != null
                 && mCall.getRemoteParams() != null
                 && LinphonePreferences.instance().shouldAutomaticallyAcceptVideoRequests()
-                && mCall.getRemoteParams().videoEnabled()) {
+                && mCall.getRemoteParams().isVideoEnabled()) {
             mAcceptIcon.setImageResource(R.drawable.call_video_start);
         }
 
@@ -183,7 +183,7 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
         mNumber.setText(address.asStringUriOnly());
 
         if (LinphonePreferences.instance().acceptIncomingEarlyMedia()) {
-            if (mCall.getCurrentParams().videoEnabled()) {
+            if (mCall.getCurrentParams().isVideoEnabled()) {
                 findViewById(R.id.avatar_layout).setVisibility(View.GONE);
                 mCall.getCore().setNativeVideoWindowId(mVideoDisplay);
             }
@@ -282,8 +282,7 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
             Log.i("[Permission] Asking for record audio");
             permissionsList.add(Manifest.permission.RECORD_AUDIO);
         }
-        if (LinphonePreferences.instance().shouldInitiateVideoCall()
-                || LinphonePreferences.instance().shouldAutomaticallyAcceptVideoRequests()) {
+        if (mCall != null && mCall.getCurrentParams().isVideoEnabled()) {
             if (camera != PackageManager.PERMISSION_GRANTED) {
                 Log.i("[Permission] Asking for camera");
                 permissionsList.add(Manifest.permission.CAMERA);
@@ -300,6 +299,7 @@ public class CallIncomingActivity extends LinphoneGenericActivity {
     @Override
     public void onRequestPermissionsResult(
             int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         for (int i = 0; i < permissions.length; i++) {
             Log.i(
                     "[Permission] "

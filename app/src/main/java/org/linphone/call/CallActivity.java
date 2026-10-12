@@ -71,7 +71,7 @@ import org.linphone.compatibility.Compatibility;
 import org.linphone.contacts.ContactsManager;
 import org.linphone.contacts.LinphoneContact;
 import org.linphone.core.Address;
-import org.linphone.core.AddressFamily;
+
 import org.linphone.core.Call;
 import org.linphone.core.Call.State;
 import org.linphone.core.CallListenerStub;
@@ -111,7 +111,22 @@ public class CallActivity extends LinphoneGenericActivity
     private static final int PERMISSIONS_REQUEST_CAMERA = 202;
     private static final int PERMISSIONS_ENABLED_CAMERA = 203;
     private static final int PERMISSIONS_ENABLED_MIC = 204;
-    private static final int PERMISSIONS_EXTERNAL_STORAGE = 205;
+    private final androidx.activity.result.ActivityResultLauncher<String> bluetoothPermission =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.RequestPermission(), granted -> {
+                if (granted) {
+                    BluetoothManager.getInstance().retryBluetoothConnection();
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        if (!isFinishing() && this.mRouteBluetooth != null) onClick(this.mRouteBluetooth);
+                    }, 600);
+                }
+            });
+
+    private boolean needsBluetoothPermission() {
+        return android.os.Build.VERSION.SDK_INT >= 31
+                && androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
+                != PackageManager.PERMISSION_GRANTED;
+    }
+
 
     private static CallActivity sInstance;
     private static long sTimeRemind = 0;
@@ -203,7 +218,7 @@ public class CallActivity extends LinphoneGenericActivity
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction("android.intent.action.HEADSET_PLUG");
         mHeadsetReceiver = new HeadsetReceiver();
-        registerReceiver(mHeadsetReceiver, intentFilter);
+        androidx.core.content.ContextCompat.registerReceiver(this, mHeadsetReceiver, intentFilter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
 
         mIsTransferAllowed =
                 getApplicationContext().getResources().getBoolean(R.bool.allow_transfers);
@@ -243,7 +258,7 @@ public class CallActivity extends LinphoneGenericActivity
                         } else if (state == State.Resuming) {
                             if (LinphonePreferences.instance().isVideoEnabled()) {
                                 mStatus.refreshStatusItems(call);
-                                if (call.getCurrentParams().videoEnabled()) {
+                                if (call.getCurrentParams().isVideoEnabled()) {
                                     showVideoView();
                                 }
                             }
@@ -266,8 +281,8 @@ public class CallActivity extends LinphoneGenericActivity
                                 return;
                             }
 
-                            boolean remoteVideo = call.getRemoteParams().videoEnabled();
-                            boolean localVideo = call.getCurrentParams().videoEnabled();
+                            boolean remoteVideo = call.getRemoteParams().isVideoEnabled();
+                            boolean localVideo = call.getCurrentParams().isVideoEnabled();
                             boolean autoAcceptCameraPolicy =
                                     LinphonePreferences.instance()
                                             .shouldAutomaticallyAcceptVideoRequests();
@@ -343,7 +358,7 @@ public class CallActivity extends LinphoneGenericActivity
                 return;
             } else {
                 mIsSpeakerEnabled = LinphoneManager.getInstance().isSpeakerEnabled();
-                mIsMicMuted = !LinphoneManager.getLc().micEnabled();
+                mIsMicMuted = !LinphoneManager.getLc().isMicEnabled();
             }
 
             Fragment callFragment;
@@ -389,7 +404,7 @@ public class CallActivity extends LinphoneGenericActivity
 
     private boolean isVideoEnabled(Call call) {
         if (call != null) {
-            return call.getCurrentParams().videoEnabled();
+            return call.getCurrentParams().isVideoEnabled();
         }
         return false;
     }
@@ -397,7 +412,7 @@ public class CallActivity extends LinphoneGenericActivity
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean("Speaker", LinphoneManager.getInstance().isSpeakerEnabled());
-        outState.putBoolean("Mic", !LinphoneManager.getLc().micEnabled());
+        outState.putBoolean("Mic", !LinphoneManager.getLc().isMicEnabled());
         outState.putBoolean("VideoCallPaused", mIsVideoCallPaused);
         outState.putBoolean("AskingVideo", mIsVideoAsk);
         outState.putLong("sTimeRemind", sTimeRemind);
@@ -521,7 +536,7 @@ public class CallActivity extends LinphoneGenericActivity
             mTransfer.setIconTint(ContextCompat.getColorStateList(this, R.color.neth_button_icon));
         }
 
-        if (BluetoothManager.getInstance().isBluetoothHeadsetAvailable()) {
+        if (needsBluetoothPermission() || BluetoothManager.getInstance().isBluetoothHeadsetAvailable()) {
             try {
                 mAudioRoute.setVisibility(View.VISIBLE);
                 mSpeaker.setVisibility(View.GONE);
@@ -604,16 +619,7 @@ public class CallActivity extends LinphoneGenericActivity
                             }
                         });
                 break;
-            case PERMISSIONS_EXTERNAL_STORAGE:
-                LinphoneUtils.dispatchOnUIThread(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                                    toggleCallRecording(!mIsRecording);
-                                }
-                            }
-                        });
+
         }
     }
 
@@ -707,8 +713,7 @@ public class CallActivity extends LinphoneGenericActivity
 
         if (LinphoneManager.getLc().isInConference()) {
             confsize =
-                    LinphoneManager.getLc().getConferenceSize()
-                            - (LinphoneManager.getLc().getConference() != null ? 1 : 0);
+                    org.linphone.compatibility.ConferenceCompat.remoteParticipantCount(LinphoneManager.getLc());
         }
 
         // Enabled mTransfer button
@@ -805,22 +810,8 @@ public class CallActivity extends LinphoneGenericActivity
             goBackToDialer();
         } else if (id == R.id.record_call) {
 
-            int externalStorage =
-                    getPackageManager()
-                            .checkPermission(
-                                    Manifest.permission.WRITE_EXTERNAL_STORAGE, getPackageName());
-            Log.i(
-                    "[Permission] External storage permission is "
-                            + (externalStorage == PackageManager.PERMISSION_GRANTED
-                            ? "granted"
-                            : "denied"));
-
-            if (externalStorage == PackageManager.PERMISSION_GRANTED) {
-                toggleCallRecording(!mIsRecording);
-            } else {
-                checkAndRequestPermission(
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE, PERMISSIONS_EXTERNAL_STORAGE);
-            }
+            // Recordings belong to the app's private directory.
+            toggleCallRecording(!mIsRecording);
 
         } else if (id == R.id.recording) {
             toggleCallRecording(false);
@@ -856,6 +847,10 @@ public class CallActivity extends LinphoneGenericActivity
         } else if (id == R.id.audio_route) {
             hideOrDisplayAudioRoutes();
         } else if (id == R.id.route_bluetooth) {
+            if (needsBluetoothPermission()) {
+                bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT);
+                return;
+            }
             if (BluetoothManager.getInstance().routeAudioToBluetooth()) {
                 mIsSpeakerEnabled = false;
                 mRouteBluetooth.setSelected(true);
@@ -913,11 +908,11 @@ public class CallActivity extends LinphoneGenericActivity
 
         if (videoDisabled) {
             CallParams params = LinphoneManager.getLc().createCallParams(call);
-            params.enableVideo(false);
+            params.setVideoEnabled(false);
             call.update(params);
         } else {
             mVideoProgress.setVisibility(View.VISIBLE);
-            if (call.getRemoteParams() != null && !call.getRemoteParams().lowBandwidthEnabled()) {
+            if (call.getRemoteParams() != null && !call.getRemoteParams().isLowBandwidthEnabled()) {
                 LinphoneManager.getInstance().addVideo();
             } else {
                 displayCustomToast(getString(R.string.error_low_bandwidth), Toast.LENGTH_LONG);
@@ -951,7 +946,7 @@ public class CallActivity extends LinphoneGenericActivity
         if (!displayVideo) {
             showAudioView();
         } else {
-            if (!call.getRemoteParams().lowBandwidthEnabled()) {
+            if (!call.getRemoteParams().isLowBandwidthEnabled()) {
                 LinphoneManager.getInstance().addVideo();
                 if (mVideoCallFragment == null || !mVideoCallFragment.isVisible()) showVideoView();
             } else {
@@ -1042,7 +1037,7 @@ public class CallActivity extends LinphoneGenericActivity
     private void toggleMicro() {
         Core lc = LinphoneManager.getLc();
         mIsMicMuted = !mIsMicMuted;
-        lc.enableMic(!mIsMicMuted);
+        lc.setMicEnabled(!mIsMicMuted);
         mMicro.setSelected(mIsMicMuted);
     }
 
@@ -1257,9 +1252,9 @@ public class CallActivity extends LinphoneGenericActivity
 
         CallParams params = LinphoneManager.getLc().createCallParams(call);
         if (accept) {
-            params.enableVideo(true);
-            LinphoneManager.getLc().enableVideoCapture(true);
-            LinphoneManager.getLc().enableVideoDisplay(true);
+            params.setVideoEnabled(true);
+            LinphoneManager.getLc().setVideoCaptureEnabled(true);
+            LinphoneManager.getLc().setVideoDisplayEnabled(true);
         }
 
         call.acceptUpdate(params);
@@ -1467,16 +1462,17 @@ public class CallActivity extends LinphoneGenericActivity
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (LinphoneUtils.onKeyVolumeAdjust(keyCode)) return true;
-        if (LinphoneUtils.onKeyBackGoHome(this, keyCode, event)) return true;
         return super.onKeyDown(keyCode, event);
     }
 
     @Override // Never invoke actually
-    public void onBackPressed() {
+    protected void onBackRequested() {
         if (mDialog != null) {
             acceptCallUpdate(false);
             mDialog.dismiss();
             mDialog = null;
+        } else {
+            moveTaskToBack(true);
         }
     }
 
@@ -1669,7 +1665,7 @@ public class CallActivity extends LinphoneGenericActivity
 
         if (lc.isInConference()) {
             lc.removeFromConference(call);
-            if (lc.getConferenceSize() <= 1) {
+            if (org.linphone.compatibility.ConferenceCompat.remoteParticipantCount(lc) == 0) {
                 lc.leaveConference();
             }
         }
@@ -1850,9 +1846,9 @@ public class CallActivity extends LinphoneGenericActivity
             formatText(
                     ip,
                     getString(R.string.call_stats_ip),
-                    (stats.getIpFamilyOfRemote() == AddressFamily.Inet6)
+                    (stats.getIpFamilyOfRemote() == Address.Family.Inet6)
                             ? "IpV6"
-                            : (stats.getIpFamilyOfRemote() == AddressFamily.Inet)
+                            : (stats.getIpFamilyOfRemote() == Address.Family.Inet)
                             ? "IpV4"
                             : "Unknown");
             formatText(
@@ -1996,7 +1992,7 @@ public class CallActivity extends LinphoneGenericActivity
                                                             call.getStats(StreamType.Audio);
                                                     CallStats videoStats = null;
 
-                                                    if (params.videoEnabled())
+                                                    if (params.isVideoEnabled())
                                                         videoStats =
                                                                 call.getStats(StreamType.Video);
 

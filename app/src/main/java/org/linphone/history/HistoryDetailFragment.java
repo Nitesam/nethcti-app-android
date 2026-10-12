@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+import org.linphone.core.Friend;
 import androidx.fragment.app.Fragment;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -39,12 +40,12 @@ import org.linphone.contacts.LinphoneContact;
 import org.linphone.core.Address;
 import org.linphone.core.CallLog;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomBackend;
+
 import org.linphone.core.ChatRoomListenerStub;
 import org.linphone.core.ChatRoomParams;
 import org.linphone.core.Core;
 import org.linphone.core.Factory;
-import org.linphone.core.FriendCapability;
+
 import org.linphone.core.ProxyConfig;
 import org.linphone.core.tools.Log;
 import org.linphone.fragments.FragmentsAvailable;
@@ -138,10 +139,10 @@ public class HistoryDetailFragment extends Fragment implements OnClickListener {
         mChatSecured.setVisibility(View.GONE);
 
         if (lAddress != null) {
-            CallLog[] logs =
-                    LinphoneManager.getLcIfManagerNotDestroyedOrNull()
-                            .getCallHistoryForAddress(lAddress);
-            List<CallLog> logsList = Arrays.asList(logs);
+            List<CallLog> logsList = new java.util.ArrayList<>();
+            for (CallLog log : LinphoneManager.getLcIfManagerNotDestroyedOrNull().getCallLogs()) {
+                if (log.getRemoteAddress().weakEqual(lAddress)) logsList.add(log);
+            }
             mLogsList.setAdapter(
                     new HistoryLogAdapter(
                             LinphoneActivity.instance(), R.layout.history_detail_cell, logsList));
@@ -157,7 +158,7 @@ public class HistoryDetailFragment extends Fragment implements OnClickListener {
 
                 if (!getResources().getBoolean(R.bool.disable_chat)
                         && mContact.hasPresenceModelForUriOrTelCapability(
-                                mSipUri, FriendCapability.LimeX3Dh)) {
+                                mSipUri, Friend.Capability.LimeX3Dh)) {
                     mChatSecured.setVisibility(View.VISIBLE);
                 }
             } else {
@@ -238,10 +239,10 @@ public class HistoryDetailFragment extends Fragment implements OnClickListener {
                     mWaitLayout.setVisibility(View.VISIBLE);
 
                     ChatRoomParams params = lc.createDefaultChatRoomParams();
-                    params.enableEncryption(isSecured);
-                    params.enableGroup(false);
+                    params.setEncryptionEnabled(isSecured);
+                    params.setGroupEnabled(false);
                     // We don't want a basic chat room
-                    params.setBackend(ChatRoomBackend.FlexisipChat);
+                    params.setBackend(ChatRoom.Backend.FlexisipChat);
 
                     Address participants[] = new Address[1];
                     participants[0] = participant;

@@ -59,6 +59,7 @@ public class FirebasePushHelper implements PushNotificationUtils.PushHelperInter
     @Override
     public void init(Context context) {
         this.context = context;
+        if (!isAvailable(context)) return;
         android.util.Log.i(TAG,
                 "[Push Notification] firebase push sender id "
                         + context.getString(R.string.gcm_defaultSenderId));
@@ -73,7 +74,7 @@ public class FirebasePushHelper implements PushNotificationUtils.PushHelperInter
                                     return;
                                 }
                                 String token = task.getResult();
-                                android.util.Log.i(TAG, "[Push Notification] firebase token is: " + token);
+                                android.util.Log.i(TAG, "[Push Notification] Firebase installation registered");
                                 LinphonePreferences.instance().setPushNotificationRegistrationID(token);
                             });
 
@@ -91,7 +92,7 @@ public class FirebasePushHelper implements PushNotificationUtils.PushHelperInter
 
                         // Get new FCM registration token
                         String token = task.getResult();
-                        android.util.Log.i(TAG, "FCM registration token is: " + token);
+                        android.util.Log.i(TAG, "FCM registration token received");
                         SharedPreferencesManager.setFcmToken(context, token);
                     });
 
@@ -104,23 +105,25 @@ public class FirebasePushHelper implements PushNotificationUtils.PushHelperInter
     public void checkForFCMTopics(Context context) {
         // Subscribe to app topics
         boolean isUserLogged = NethCTIApplication.Companion.getInstance().isLogged();
-        if (isUserLogged) subscribeToAppTopics(context);
+        if (isUserLogged && isAvailable(context)) subscribeToAppTopics(context);
     }
 
     @Override
     public boolean isAvailable(Context context) {
         GoogleApiAvailabilityLight googleApiAvailability = GoogleApiAvailabilityLight.getInstance();
         int resultCode = googleApiAvailability.isGooglePlayServicesAvailable(context);
-        return resultCode == ConnectionResult.SUCCESS;
+        return resultCode == ConnectionResult.SUCCESS
+                && !com.google.firebase.FirebaseApp.getApps(context).isEmpty();
     }
 
     @Override
     public void deregister(Context context) {
-        unsubscribeFromAppTopics(context);
+        if (isAvailable(context)) unsubscribeFromAppTopics(context);
     }
 
     private static void subscribeToAppTopics(Context context) {
         String authToken = SharedPreferencesManager.getAuthtoken(LinphoneManager.getInstance().getContext());
+        if (authToken == null || authToken.isEmpty()) return;
         String sha256Topic = calculateSHA256(authToken.substring(authToken.lastIndexOf(':') + 1));
         if(authToken != null) doFPPRegister(
                 context,
@@ -134,6 +137,7 @@ public class FirebasePushHelper implements PushNotificationUtils.PushHelperInter
 
     private static void unsubscribeFromAppTopics(Context context) {
         String authToken = SharedPreferencesManager.getAuthtoken(LinphoneManager.getInstance().getContext());
+        if (authToken == null || authToken.isEmpty()) return;
         String sha256Topic = calculateSHA256(authToken.substring(authToken.lastIndexOf(':') + 1));
         if(authToken != null) doFPPRegister(
                 context,
@@ -149,7 +153,7 @@ public class FirebasePushHelper implements PushNotificationUtils.PushHelperInter
         try {
             OkHttpClient.Builder client = new OkHttpClient.Builder();
             HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
-            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+            loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
             client.addInterceptor(loggingInterceptor);
             if (notificatoreUrl == null || notificatoreUrl.isEmpty()) return;
             Retrofit retrofit =

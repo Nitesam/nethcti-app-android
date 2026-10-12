@@ -24,7 +24,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.text.TextUtils;
 
@@ -88,39 +87,30 @@ public class FileUtils {
     public static String getFilePath(final Context context, final Uri uri) {
         if (uri == null) return null;
 
-        String result = null;
-        String name = getNameFromUri(uri, context);
-
         try {
+            String name = getNameFromUri(uri, context);
             File localFile = createFile(context, name);
-            InputStream remoteFile = context.getContentResolver().openInputStream(uri);
-
-            if (copyToFile(remoteFile, localFile)) {
-                result = localFile.getAbsolutePath();
+            try (InputStream remoteFile = context.getContentResolver().openInputStream(uri)) {
+                if (copyToFile(remoteFile, localFile)) return localFile.getAbsolutePath();
             }
-
-            remoteFile.close();
-        } catch (IOException e) {
-            Log.e("Enable to get sharing file", e);
+            localFile.delete();
+        } catch (IOException | SecurityException | IllegalArgumentException e) {
+            Log.w("Unable to read selected attachment");
         }
-
-        return result;
+        return null;
     }
 
     private static String getNameFromUri(Uri uri, Context context) {
-        String name = null;
-        if (uri.getScheme().equals("content")) {
-            Cursor returnCursor = context.getContentResolver().query(uri, null, null, null, null);
-            if (returnCursor != null) {
-                returnCursor.moveToFirst();
-                int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                name = returnCursor.getString(nameIndex);
-                returnCursor.close();
+        if ("content".equals(uri.getScheme())) {
+            try (Cursor cursor = context.getContentResolver().query(uri,
+                    new String[] {OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                    if (index >= 0) return cursor.getString(index);
+                }
             }
-        } else if (uri.getScheme().equals("file")) {
-            name = uri.getLastPathSegment();
         }
-        return name;
+        return uri.getLastPathSegment();
     }
 
     /**
@@ -142,18 +132,14 @@ public class FileUtils {
         }
     }
 
-    private static File createFile(Context context, String fileName) {
-        if (TextUtils.isEmpty(fileName)) fileName = getStartDate();
-
-        if (!fileName.contains(".")) {
-            fileName = fileName + ".unknown";
-        }
-
-        final File root;
-        root = context.getExternalCacheDir();
-
-        if (root != null && !root.exists()) root.mkdirs();
-        return new File(root, fileName);
+    private static File createFile(Context context, String fileName) throws IOException {
+        if (TextUtils.isEmpty(fileName)) fileName = "attachment.unknown";
+        fileName = new File(fileName).getName();
+        File root = context.getExternalCacheDir();
+        if (root == null) root = context.getCacheDir();
+        File directory = new File(root, "selected-" + java.util.UUID.randomUUID());
+        if (!directory.mkdirs()) throw new IOException("Cannot create attachment directory");
+        return new File(directory, fileName);
     }
 
     public static Uri getCVSPathFromLookupUri(String content) {
@@ -166,18 +152,6 @@ public class FileUtils {
                     return createCvsFromString(contactVcard);
                 }
             }
-        }
-        return null;
-    }
-
-    public static String getRealPathFromURI(Context context, Uri contentUri) {
-        String[] proj = {MediaStore.Images.Media.DATA};
-        Cursor cursor = context.getContentResolver().query(contentUri, proj, null, null, null);
-        if (cursor != null && cursor.moveToFirst()) {
-            int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-            String result = cursor.getString(column_index);
-            cursor.close();
-            return result;
         }
         return null;
     }

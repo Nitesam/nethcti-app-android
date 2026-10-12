@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+import org.linphone.core.ChatRoom;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,7 +31,7 @@ import org.linphone.R;
 import org.linphone.contacts.ContactsManager;
 import org.linphone.contacts.LinphoneContact;
 import org.linphone.core.Address;
-import org.linphone.core.ChatRoomSecurityLevel;
+
 import org.linphone.core.Participant;
 import org.linphone.core.ParticipantDevice;
 import org.linphone.utils.LinphoneUtils;
@@ -76,7 +77,7 @@ class DevicesAdapter extends BaseExpandableListAdapter {
 
             holder.deviceName.setText(device.getName());
 
-            ChatRoomSecurityLevel level = device.getSecurityLevel();
+            ChatRoom.SecurityLevel level = device.getSecurityLevel();
             switch (level) {
                 case Safe:
                     holder.securityLevel.setImageResource(R.drawable.security_2_indicator);
@@ -132,7 +133,7 @@ class DevicesAdapter extends BaseExpandableListAdapter {
                 holder.groupExpander.setVisibility(View.GONE);
 
                 ParticipantDevice device = (ParticipantDevice) getChild(groupPosition, 0);
-                ChatRoomSecurityLevel level = device.getSecurityLevel();
+                ChatRoom.SecurityLevel level = device.getSecurityLevel();
                 switch (level) {
                     case Safe:
                         holder.securityLevel.setImageResource(R.drawable.security_2_indicator);
@@ -179,7 +180,7 @@ class DevicesAdapter extends BaseExpandableListAdapter {
 
         holder.deviceName.setText(device.getName());
 
-        ChatRoomSecurityLevel level = device.getSecurityLevel();
+        ChatRoom.SecurityLevel level = device.getSecurityLevel();
         switch (level) {
             case Safe:
                 holder.securityLevel.setImageResource(R.drawable.security_2_indicator);

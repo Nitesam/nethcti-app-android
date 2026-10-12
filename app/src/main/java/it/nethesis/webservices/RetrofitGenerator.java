@@ -64,7 +64,7 @@ public class RetrofitGenerator {
                                         Log.w("OK_HTTP_BODY", s);
                                     }
                                 });
-                logBody.level(HttpLoggingInterceptor.Level.BODY);
+                logBody.level(HttpLoggingInterceptor.Level.BASIC);
                 httpClient.addInterceptor(logBody);
             }
             if (interceptors) {
@@ -76,7 +76,7 @@ public class RetrofitGenerator {
                                         Log.w("OK_HTTP_HEADER", s);
                                     }
                                 });
-                logHeader.level(HttpLoggingInterceptor.Level.HEADERS);
+                logHeader.level(HttpLoggingInterceptor.Level.NONE);
                 httpClient.addInterceptor(logHeader);
             }
 

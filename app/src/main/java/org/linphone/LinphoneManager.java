@@ -72,7 +72,7 @@ import org.linphone.call.CallManager;
 import org.linphone.contacts.ContactsManager;
 import org.linphone.contacts.LinphoneContact;
 import org.linphone.core.AccountCreator;
-import org.linphone.core.AccountCreatorListener;
+import org.linphone.compatibility.DefaultAccountCreatorListener;
 import org.linphone.core.Address;
 import org.linphone.core.AudioDevice;
 import org.linphone.core.AuthInfo;
@@ -84,7 +84,7 @@ import org.linphone.core.CallParams;
 import org.linphone.core.CallStats;
 import org.linphone.core.ChatMessage;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomCapabilities;
+
 import org.linphone.core.Conference;
 import org.linphone.core.ConfiguringState;
 import org.linphone.core.Content;
@@ -111,9 +111,6 @@ import org.linphone.core.Tunnel;
 import org.linphone.core.TunnelConfig;
 import org.linphone.core.VersionUpdateCheckResult;
 import org.linphone.core.tools.Log;
-import org.linphone.core.tools.h264.H264Helper;
-import org.linphone.core.tools.h264.OpenH264DownloadHelper;
-import org.linphone.core.tools.h264.OpenH264DownloadHelperListener;
 import org.linphone.mediastream.Version;
 import org.linphone.mediastream.video.capture.hwconf.AndroidCameraConfiguration;
 import org.linphone.mediastream.video.capture.hwconf.AndroidCameraConfiguration.AndroidCamera;
@@ -163,7 +160,7 @@ import retrofit2.Response;
  *
  * <p>Add Service Listener to react to Linphone state changes.
  */
-public class LinphoneManager implements CoreListener, SensorEventListener, AccountCreatorListener {
+public class LinphoneManager extends org.linphone.core.CoreListenerStub implements SensorEventListener, DefaultAccountCreatorListener {
 
     private static final int LINPHONE_VOLUME_STREAM = STREAM_VOICE_CALL;
 
@@ -189,8 +186,6 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
     private final Resources mRessources;
     private final LinphonePreferences mPrefs;
     private Core mCore;
-    private OpenH264DownloadHelper mCodecDownloader;
-    private OpenH264DownloadHelperListener mCodecListener;
     private final String mBasePath;
     private boolean mAudioFocused;
     private boolean mEchoTesterIsRunning;
@@ -272,10 +267,8 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
 
         sInstance = new LinphoneManager(c);
         sInstance.startLibLinphone(c, isPush);
-        sInstance.initOpenH264DownloadHelper();
 
-        // H264 codec Management - set to auto mode -> MediaCodec >= android 5.0 >= OpenH264
-        H264Helper.setH264Mode(H264Helper.MODE_AUTO, getLc());
+        // H.264 is provided by platform MediaCodec through the current SDK.
     }
 
     public static synchronized LinphoneManager getInstance() {
@@ -375,97 +368,6 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
         mAudioManager.setSpeakerphoneOn(enable);
     }
 
-    private void initOpenH264DownloadHelper() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            Log.i("[Manager] Android >= 5.1 we disable the download of OpenH264");
-            OpenH264DownloadHelper.setOpenH264DownloadEnabled(false);
-            return;
-        }
-
-        mCodecDownloader = new OpenH264DownloadHelper(getContext());
-        mCodecListener =
-                new OpenH264DownloadHelperListener() {
-                    ProgressDialog progress;
-                    final int ctxt = 0;
-
-                    @Override
-                    public void OnProgress(final int current, final int max) {
-                        mHandler.post(
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        OpenH264DownloadHelper ohcodec =
-                                                LinphoneManager.getInstance()
-                                                        .getOpenH264DownloadHelper();
-                                        if (progress == null) {
-                                            progress =
-                                                    new ProgressDialog(
-                                                            (Context) ohcodec.getUserData(ctxt));
-                                            progress.setCanceledOnTouchOutside(false);
-                                            progress.setCancelable(false);
-                                            progress.setProgressStyle(
-                                                    ProgressDialog.STYLE_HORIZONTAL);
-                                        } else if (current <= max) {
-                                            progress.setMessage(
-                                                    getString(
-                                                            R.string
-                                                                    .assistant_openh264_downloading));
-                                            progress.setMax(max);
-                                            progress.setProgress(current);
-                                            progress.show();
-                                        } else {
-                                            progress.dismiss();
-                                            progress = null;
-                                            if (Build.VERSION.SDK_INT
-                                                    >= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                                                LinphoneManager.getLc()
-                                                        .reloadMsPlugins(
-                                                                AssistantActivity.instance()
-                                                                        .getApplicationInfo()
-                                                                        .nativeLibraryDir);
-                                                AssistantActivity.instance().endDownloadCodec();
-                                            } else {
-                                                // We need to restart due to bad android linker
-                                                AssistantActivity.instance().restartApplication();
-                                            }
-                                        }
-                                    }
-                                });
-                    }
-
-                    @Override
-                    public void OnError(final String error) {
-                        mHandler.post(
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        if (progress != null) progress.dismiss();
-                                        AlertDialog.Builder builder =
-                                                new AlertDialog.Builder(
-                                                        (Context)
-                                                                LinphoneManager.getInstance()
-                                                                        .getOpenH264DownloadHelper()
-                                                                        .getUserData(ctxt));
-                                        builder.setMessage(
-                                                getString(R.string.assistant_openh264_error));
-                                        builder.setCancelable(false);
-                                        builder.setNeutralButton(getString(R.string.ok), null);
-                                        builder.show();
-                                    }
-                                });
-                    }
-                };
-        mCodecDownloader.setOpenH264HelperListener(mCodecListener);
-    }
-
-    public OpenH264DownloadHelperListener getOpenH264HelperListener() {
-        return mCodecListener;
-    }
-
-    public OpenH264DownloadHelper getOpenH264DownloadHelper() {
-        return mCodecDownloader;
-    }
-
     public void routeAudioToSpeaker() {
         routeAudioToSpeakerHelper(true);
     }
@@ -520,7 +422,7 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
         if (lc != null && lc.getFriendsLists() != null && lc.getFriendsLists().length > 0) {
             FriendList friendList = (lc.getFriendsLists())[0];
             Log.i("[Manager] Presence list subscription is " + (enabled ? "enabled" : "disabled"));
-            friendList.enableSubscriptions(enabled);
+            friendList.setSubscriptionsEnabled(enabled);
         }
     }
 
@@ -613,7 +515,7 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
 
     private void enableCamera(Call call, boolean enable) {
         if (call != null) {
-            call.enableCamera(enable);
+            call.setCameraEnabled(enable);
             if (mServiceContext.getResources().getBoolean(R.bool.enable_call_notification))
                 LinphoneService.instance()
                         .getNotificationManager()
@@ -827,7 +729,7 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
         mCallIntentFilter.setPriority(99999999);
         mCallReceiver = new OutgoingCallReceiver();
         try {
-            mServiceContext.registerReceiver(mCallReceiver, mCallIntentFilter);
+            androidx.core.content.ContextCompat.registerReceiver(mServiceContext, mCallReceiver, mCallIntentFilter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
         }
@@ -839,14 +741,14 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
         mHookIntentFilter = new IntentFilter("com.base.module.phone.HOOKEVENT");
         mHookIntentFilter.setPriority(999);
         mHookReceiver = new HookReceiver();
-        mServiceContext.registerReceiver(mHookReceiver, mHookIntentFilter);
+        androidx.core.content.ContextCompat.registerReceiver(mServiceContext, mHookReceiver, mHookIntentFilter, androidx.core.content.ContextCompat.RECEIVER_EXPORTED);
 
         resetCameraFromPreferences();
 
         mAccountCreator =
                 LinphoneManager.getLc()
                         .createAccountCreator(LinphonePreferences.instance().getXmlrpcUrl());
-        mAccountCreator.setListener(this);
+        mAccountCreator.addListener(this);
         mCallGsmON = false;
 
         updateMissedChatCount();
@@ -1051,7 +953,7 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
             long time,
             Uri file,
             String mime) {
-        if (cr.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+        if (cr.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             if (contact != null) {
                 LinphoneService.instance()
                         .getNotificationManager()
@@ -1293,9 +1195,7 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
                     mAudioFocused = false;
                 }
                 if (activity != null) {
-                    TelephonyManager tm =
-                            (TelephonyManager) activity.getSystemService(Context.TELEPHONY_SERVICE);
-                    if (tm.getCallState() == TelephonyManager.CALL_STATE_IDLE) {
+                    if (!isInSystemCall(activity)) {
                         Log.d("[Manager] ---AudioManager: back to MODE_NORMAL");
                         mAudioManager.setMode(AudioManager.MODE_NORMAL);
                         Log.d("[Manager] All call terminated, routing back to earpiece");
@@ -1306,14 +1206,14 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
         }
         if (state == State.UpdatedByRemote) {
             // If the correspondent proposes video while audio call
-            boolean remoteVideo = call.getRemoteParams().videoEnabled();
-            boolean localVideo = call.getCurrentParams().videoEnabled();
+            boolean remoteVideo = call.getRemoteParams().isVideoEnabled();
+            boolean localVideo = call.getCurrentParams().isVideoEnabled();
             boolean autoAcceptCameraPolicy =
                     LinphonePreferences.instance().shouldAutomaticallyAcceptVideoRequests();
             if (remoteVideo
                     && !localVideo
                     && !autoAcceptCameraPolicy
-                    && LinphoneManager.getLc().getConference() == null) {
+                    && call.getConference() == null) {
                 call.deferUpdate();
                 //LinphoneManager.getLc().deferCallUpdate(call);
             }
@@ -1469,9 +1369,9 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
 
                 Uri ringtoneUri = Settings.System.DEFAULT_RINGTONE_URI;
 
-                String ringtone =
-                        LinphonePreferences.instance()
-                                .getRingtone(ringtoneUri.toString());
+                String ringtone = LinphonePreferences.instance().isDeviceRingtoneEnabled()
+                        ? LinphonePreferences.instance().getRingtone(ringtoneUri.toString())
+                        : mRingSoundFile;
 
                 try {
                     if (ringtone.startsWith("content://")) {
@@ -1481,8 +1381,11 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
                         mRingerPlayer.setDataSource(fis.getFD());
                         fis.close();
                     }
-                } catch (IOException e) {
-                    Log.e(e, "[Manager] Cannot set ringtone");
+                } catch (IOException | SecurityException e) {
+                    // An old custom ringtone may no longer be readable. Use the bundled sound.
+                    Log.w("[Manager] Custom ringtone unavailable, using the app ringtone");
+                    mRingerPlayer.reset();
+                    mRingerPlayer.setDataSource(mRingSoundFile);
                 }
 
                 mRingerPlayer.prepare();
@@ -1499,7 +1402,11 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
 
     private synchronized void stopRinging() {
         if (mRingerPlayer != null) {
-            mRingerPlayer.stop();
+            try {
+                mRingerPlayer.stop();
+            } catch (IllegalStateException ignored) {
+                // The ringtone may have failed to prepare.
+            }
             mRingerPlayer.release();
             mRingerPlayer = null;
         }
@@ -1539,7 +1446,7 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
                         LinphoneService.instance().getApplicationContext());
 
         if (params != null) {
-            params.enableLowBandwidth(isLowBandwidthConnection);
+            params.setLowBandwidthEnabled(isLowBandwidthConnection);
             params.setRecordFile(
                     FileUtils.getCallRecordingFilename(getContext(), call.getRemoteAddress()));
         } else {
@@ -1874,8 +1781,6 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
         list.removeListener(ContactsManager.getInstance());
     }
 
-    @Override
-    public void onReferReceived(Core lc, String refer_to) {}
 
     @Override
     public void onImeeUserRegistration(@NonNull Core core, boolean status, @NonNull String userId, @NonNull String info) {
@@ -2112,10 +2017,18 @@ public class LinphoneManager implements CoreListener, SensorEventListener, Accou
     }
 
     public static boolean isInSystemCall(Context context) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context,
+                android.Manifest.permission.READ_PHONE_STATE)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) return false;
         TelephonyManager telManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
         if (telManager == null)
             return false;
-        return (telManager.getCallState() != TelephonyManager.CALL_STATE_IDLE);
+        try {
+            return telManager.getCallState() != TelephonyManager.CALL_STATE_IDLE;
+        } catch (SecurityException denied) {
+            // Permission can be revoked between the check and the binder call.
+            return false;
+        }
     }
 
 }

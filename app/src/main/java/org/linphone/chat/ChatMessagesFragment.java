@@ -34,7 +34,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcelable;
-import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.ContextMenu;
@@ -73,9 +72,9 @@ import org.linphone.contacts.LinphoneContact;
 import org.linphone.core.Address;
 import org.linphone.core.ChatMessage;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomCapabilities;
-import org.linphone.core.ChatRoomListener;
-import org.linphone.core.ChatRoomSecurityLevel;
+
+import org.linphone.compatibility.DefaultChatRoomListener;
+
 import org.linphone.core.Content;
 import org.linphone.core.Core;
 import org.linphone.core.EventLog;
@@ -98,12 +97,11 @@ import java.util.Arrays;
 import java.util.List;
 
 public class ChatMessagesFragment extends Fragment
-        implements ChatRoomListener,
+        implements DefaultChatRoomListener,
                 ContactsUpdatedListener,
                 ChatMessageViewHolderClickListener,
                 SelectableHelper.DeleteListener,
                 RichEditText.RichInputListener {
-    private static final int ADD_PHOTO = 1337;
     private static final int MESSAGES_PER_PAGE = 20;
     private static final String INPUT_CONTENT_INFO_KEY = "COMMIT_CONTENT_INPUT_CONTENT_INFO";
     private static final String COMMIT_CONTENT_FLAGS_KEY = "COMMIT_CONTENT_FLAGS";
@@ -119,7 +117,18 @@ public class ChatMessagesFragment extends Fragment
     private SelectableHelper mSelectionHelper;
     private Context mContext;
     private ViewTreeObserver.OnGlobalLayoutListener mKeyboardListener;
-    private Uri mImageToUploadUri;
+    private final org.linphone.utils.AttachmentPicker attachmentPicker =
+            new org.linphone.utils.AttachmentPicker(this, uri -> {
+                String path = FileUtils.getFilePath(requireContext(), uri);
+                if (path == null) {
+                    android.widget.Toast.makeText(requireContext(), R.string.attachment_open_failed,
+                            android.widget.Toast.LENGTH_LONG).show();
+                } else if (FileUtils.isExtensionImage(path)) {
+                    addImageToPendingList(path);
+                } else {
+                    addFileToPendingList(path);
+                }
+            });
     private ChatMessagesAdapter mEventsAdapter;
     private ChatMessagesOldAdapter mOldEventsAdapter;
     private String mLocalSipUri, mRemoteSipUri;
@@ -165,7 +174,7 @@ public class ChatMessagesFragment extends Fragment
                     @Override
                     public void onClick(View view) {
                         boolean oneParticipantOneDevice = false;
-                        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+                        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
                             ParticipantDevice[] devices =
                                     mChatRoom.getParticipants()[0].getDevices();
                             if (devices.length == 1) {
@@ -252,7 +261,7 @@ public class ChatMessagesFragment extends Fragment
                                         false,
                                         null,
                                         mChatRoom.hasCapability(
-                                                ChatRoomCapabilities.Encrypted.toInt()));
+                                                ChatRoom.Capabilities.Encrypted.toInt()));
                     }
                 });
 
@@ -267,7 +276,6 @@ public class ChatMessagesFragment extends Fragment
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        LinphoneActivity.instance().checkAndRequestPermissionsToSendImage();
                         pickFile();
                     }
                 });
@@ -414,61 +422,6 @@ public class ChatMessagesFragment extends Fragment
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (data != null) {
-            if (requestCode == ADD_PHOTO && resultCode == Activity.RESULT_OK) {
-                String fileToUploadPath = null;
-                if (data.getData() != null) {
-                    if (data.getData().toString().contains("com.android.contacts/contacts/")) {
-                        if (FileUtils.getCVSPathFromLookupUri(data.getData().toString()) != null) {
-                            fileToUploadPath =
-                                    FileUtils.getCVSPathFromLookupUri(data.getData().toString())
-                                            .toString();
-                        } else {
-                            // TODO Error
-                            return;
-                        }
-                    } else {
-                        fileToUploadPath =
-                                FileUtils.getRealPathFromURI(getActivity(), data.getData());
-                    }
-                    if (fileToUploadPath == null) {
-                        fileToUploadPath = data.getData().toString();
-                    }
-                } else if (mImageToUploadUri != null) {
-                    fileToUploadPath = mImageToUploadUri.getPath();
-                }
-
-                if (fileToUploadPath.startsWith("content://")
-                        || fileToUploadPath.startsWith("file://")) {
-                    fileToUploadPath =
-                            FileUtils.getFilePath(
-                                    getActivity().getApplicationContext(),
-                                    Uri.parse(fileToUploadPath));
-                } else if (fileToUploadPath.contains("com.android.contacts/contacts/")) {
-                    fileToUploadPath =
-                            FileUtils.getCVSPathFromLookupUri(fileToUploadPath).toString();
-                }
-
-                if (FileUtils.isExtensionImage(fileToUploadPath)) {
-                    addImageToPendingList(fileToUploadPath);
-                } else {
-                    addFileToPendingList(fileToUploadPath);
-                }
-            } else {
-                super.onActivityResult(requestCode, resultCode, data);
-            }
-        } else {
-            if (FileUtils.isExtensionImage(mImageToUploadUri.getPath())) {
-                File file = new File(mImageToUploadUri.getPath());
-                if (file.exists()) {
-                    addImageToPendingList(mImageToUploadUri.getPath());
-                }
-            }
-        }
-    }
-
-    @Override
     public void onDeleteSelection(Object[] objectsToDelete) {
         for (Object obj : objectsToDelete) {
             EventLog eventLog = (EventLog) obj;
@@ -484,7 +437,7 @@ public class ChatMessagesFragment extends Fragment
             }
             eventLog.deleteFromDatabase();
         }
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             ((ChatMessagesGenericAdapter) mChatEventsList.getAdapter())
                     .refresh(mChatRoom.getHistoryMessageEvents(MESSAGES_PER_PAGE));
         } else {
@@ -523,7 +476,7 @@ public class ChatMessagesFragment extends Fragment
         }
 
         if (!message.isOutgoing()
-                || mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+                || mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             // Do not show incoming messages IDMN state in 1 to 1 chat room as we don't receive IMDN
             // for them
             menu.removeItem(R.id.imdn_infos);
@@ -621,7 +574,7 @@ public class ChatMessagesFragment extends Fragment
                     @Override
                     public void run() {
                         int maxSize;
-                        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+                        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
                             maxSize = mChatRoom.getHistorySize();
                         } else {
                             maxSize = mChatRoom.getHistoryEventsSize();
@@ -632,7 +585,7 @@ public class ChatMessagesFragment extends Fragment
                                 upperBound = maxSize;
                             }
                             EventLog[] newLogs;
-                            if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+                            if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
                                 newLogs =
                                         mChatRoom.getHistoryRangeMessageEvents(
                                                 totalItemsCount, upperBound);
@@ -710,7 +663,7 @@ public class ChatMessagesFragment extends Fragment
 
     private void getContactsForParticipants() {
         mParticipants = new ArrayList<>();
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             LinphoneContact c =
                     ContactsManager.getInstance().findContactFromAddress(mRemoteParticipantAddress);
             if (c != null) {
@@ -766,7 +719,7 @@ public class ChatMessagesFragment extends Fragment
         LinphoneActivity.instance().refreshMissedChatCountDisplay();
 
         mRemoteParticipantAddress = mRemoteSipAddress;
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())
                 && mChatRoom.getParticipants().length > 0) {
             mRemoteParticipantAddress = mChatRoom.getParticipants()[0].getAddress();
         }
@@ -780,7 +733,7 @@ public class ChatMessagesFragment extends Fragment
         Core core = LinphoneManager.getLcIfManagerNotDestroyedOrNull();
         if (core == null || mChatRoom == null) return;
 
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             mCallButton.setVisibility(View.VISIBLE);
             mGroupInfosButton.setVisibility(View.GONE);
             mParticipantsLabel.setVisibility(View.GONE);
@@ -830,11 +783,11 @@ public class ChatMessagesFragment extends Fragment
     }
 
     private void updateSecurityLevelIcon() {
-        if (!mChatRoom.hasCapability(ChatRoomCapabilities.Encrypted.toInt())) {
+        if (!mChatRoom.hasCapability(ChatRoom.Capabilities.Encrypted.toInt())) {
             mChatRoomSecurityLevel.setVisibility(View.GONE);
         } else {
             mChatRoomSecurityLevel.setVisibility(View.VISIBLE);
-            ChatRoomSecurityLevel level = mChatRoom.getSecurityLevel();
+            ChatRoom.SecurityLevel level = mChatRoom.getSecurityLevel();
             switch (level) {
                 case Safe:
                     mChatRoomSecurityLevel.setImageResource(R.drawable.security_2_indicator);
@@ -852,7 +805,7 @@ public class ChatMessagesFragment extends Fragment
 
     private void displayChatRoomHistory() {
         if (mChatRoom == null) return;
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             mEventsAdapter =
                     new ChatMessagesAdapter(
                             this,
@@ -1011,34 +964,7 @@ public class ChatMessagesFragment extends Fragment
     }
 
     private void pickFile() {
-        List<Intent> cameraIntents = new ArrayList<>();
-        Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        File file =
-                new File(
-                        FileUtils.getStorageDirectory(mContext),
-                        getString(R.string.temp_photo_name_with_date)
-                                .replace(
-                                        "%s",
-                                        String.valueOf(System.currentTimeMillis()) + ".jpeg"));
-        mImageToUploadUri = Uri.fromFile(file);
-        captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageToUploadUri);
-        cameraIntents.add(captureIntent);
-
-        Intent galleryIntent = new Intent();
-        galleryIntent.setType("image/*");
-        galleryIntent.setAction(Intent.ACTION_PICK);
-
-        Intent fileIntent = new Intent();
-        fileIntent.setType("*/*");
-        fileIntent.setAction(Intent.ACTION_GET_CONTENT);
-        cameraIntents.add(fileIntent);
-
-        Intent chooserIntent =
-                Intent.createChooser(galleryIntent, getString(R.string.image_picker_title));
-        chooserIntent.putExtra(
-                Intent.EXTRA_INITIAL_INTENTS, cameraIntents.toArray(new Parcelable[] {}));
-
-        startActivityForResult(chooserIntent, ADD_PHOTO);
+        attachmentPicker.show("*/*");
     }
 
     private void addFileToPendingList(String path) {
@@ -1051,7 +977,8 @@ public class ChatMessagesFragment extends Fragment
         pendingFile.setTag(path);
 
         TextView text = pendingFile.findViewById(R.id.pendingFileForUpload);
-        String extension = path.substring(path.lastIndexOf('.'));
+        String extension = FileUtils.getExtensionFromFileName(path);
+        if (extension == null) extension = FileUtils.getNameFromFilePath(path);
         text.setText(extension);
 
         ImageView remove = pendingFile.findViewById(R.id.remove);
@@ -1120,7 +1047,7 @@ public class ChatMessagesFragment extends Fragment
     /** Message sending */
     private void sendMessage() {
         ChatMessage msg = mChatRoom.createEmptyMessage();
-        boolean isBasicChatRoom = mChatRoom.hasCapability(ChatRoomCapabilities.Basic.toInt());
+        boolean isBasicChatRoom = mChatRoom.hasCapability(ChatRoom.Capabilities.Basic.toInt());
         boolean sendMultipleImagesAsDifferentMessages =
                 getResources().getBoolean(R.bool.send_multiple_images_as_different_messages);
         boolean sendImageAndTextAsDifferentMessages =
@@ -1241,7 +1168,7 @@ public class ChatMessagesFragment extends Fragment
                                     null);
                 }
             }
-        } else if (LinphoneManager.getLc().limeEnabled() == LimeState.Mandatory) {
+        } else if (cr.getCurrentParams().isEncryptionEnabled()) {
             final Dialog dialog =
                     LinphoneActivity.instance()
                             .displayDialog(
@@ -1296,12 +1223,6 @@ public class ChatMessagesFragment extends Fragment
         if (!msg.hasTextContent() && msg.getFileTransferInformation() == null) {
             Log.w("Message has no text or file transfer information to display, ignoring it...");
             return;
-        }
-
-        String externalBodyUrl = msg.getExternalBodyUrl();
-        Content fileTransferContent = msg.getFileTransferInformation();
-        if (externalBodyUrl != null || fileTransferContent != null) {
-            LinphoneActivity.instance().checkAndRequestExternalStoragePermission();
         }
 
         ((ChatMessagesGenericAdapter) mChatEventsList.getAdapter()).addToHistory(event);
@@ -1373,28 +1294,28 @@ public class ChatMessagesFragment extends Fragment
         // So we have to refresh the display when information is available
         // In the meantime header will be chatroom-xxxxxxx
         if (mChatRoom == null) mChatRoom = cr;
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())
                 && mChatRoom.getParticipants().length > 0) {
             mRemoteParticipantAddress = mChatRoom.getParticipants()[0].getAddress();
         }
         getContactsForParticipants();
         displayChatRoomHeader();
 
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) return;
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) return;
         ((ChatMessagesGenericAdapter) mChatEventsList.getAdapter()).addToHistory(event);
         scrollToBottom();
     }
 
     @Override
     public void onConferenceLeft(ChatRoom cr, EventLog event) {
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) return;
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) return;
         ((ChatMessagesGenericAdapter) mChatEventsList.getAdapter()).addToHistory(event);
         scrollToBottom();
     }
 
     @Override
     public void onParticipantAdminStatusChanged(ChatRoom cr, EventLog event) {
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) return;
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) return;
         ((ChatMessagesGenericAdapter) mChatEventsList.getAdapter()).addToHistory(event);
         scrollToBottom();
     }
@@ -1404,7 +1325,7 @@ public class ChatMessagesFragment extends Fragment
 
     @Override
     public void onParticipantRemoved(ChatRoom cr, EventLog event) {
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) return;
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) return;
         getContactsForParticipants();
         ((ChatMessagesGenericAdapter) mChatEventsList.getAdapter()).addToHistory(event);
         scrollToBottom();
@@ -1452,7 +1373,7 @@ public class ChatMessagesFragment extends Fragment
 
     @Override
     public void onParticipantAdded(ChatRoom cr, EventLog event) {
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) return;
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) return;
         getContactsForParticipants();
         ((ChatMessagesGenericAdapter) mChatEventsList.getAdapter()).addToHistory(event);
         scrollToBottom();
@@ -1460,7 +1381,7 @@ public class ChatMessagesFragment extends Fragment
 
     @Override
     public void onSubjectChanged(ChatRoom cr, EventLog event) {
-        if (mChatRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) return;
+        if (mChatRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) return;
         mRoomLabel.setText(event.getSubject());
         ((ChatMessagesGenericAdapter) mChatEventsList.getAdapter()).addToHistory(event);
         scrollToBottom();

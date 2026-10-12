@@ -19,11 +19,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
-import static androidx.core.content.ContextCompat.checkSelfPermission;
 
-import android.Manifest;
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -149,16 +146,9 @@ public class RecordingsFragment extends Fragment
 
         if (directory.exists() && directory.isDirectory()) {
 
-            if (checkSelfPermission(mContext, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                if (this != null) {
-                    this.requestPermissions(
-                            new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
-                }
-            }
             File[] existingRecordings = directory.listFiles();
 
-            if (existingRecordings.length > 0) {
+            if (existingRecordings != null && existingRecordings.length > 0) {
                 for (File f : existingRecordings) {
                     boolean exists = false;
                     for (Recording r : mRecordings) {
@@ -183,10 +173,6 @@ public class RecordingsFragment extends Fragment
     @Override
     public void onResume() {
         super.onResume();
-
-        // This is necessary, without it you won't be able to remove mRecordings as you won't be
-        // allowed to.
-        LinphoneActivity.instance().checkAndRequestExternalStoragePermission();
 
         LinphoneManager.getInstance().setAudioManagerModeNormal();
         LinphoneManager.getInstance().routeAudioToSpeaker();

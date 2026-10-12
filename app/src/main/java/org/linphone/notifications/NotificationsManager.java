@@ -88,7 +88,7 @@ public class NotificationsManager {
 
         PendingIntent pendingIntent =
                 PendingIntent.getActivity(
-                        mContext, SERVICE_NOTIF_ID, notifIntent, Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
+                        mContext, SERVICE_NOTIF_ID, notifIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         mServiceNotification =
                 Compatibility.createNotification(
                         mContext,
@@ -110,17 +110,32 @@ public class NotificationsManager {
     }
 
     public void startForeground() {
-        LinphoneService.instance().startForeground(SERVICE_NOTIF_ID, mServiceNotification);
+        startPhoneService(SERVICE_NOTIF_ID, mServiceNotification);
         mCurrentForegroundServiceNotification = SERVICE_NOTIF_ID;
     }
 
     public void startForeground(Notification notification, int id) {
-        LinphoneService.instance().startForeground(id, notification);
+        startPhoneService(id, notification);
         mCurrentForegroundServiceNotification = id;
+    }
+
+    private void startPhoneService(int id, Notification notification) {
+        if (Build.VERSION.SDK_INT >= 29) {
+            LinphoneService.instance().startForeground(id, notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL);
+        } else {
+            LinphoneService.instance().startForeground(id, notification);
+        }
+        if (org.linphone.core.tools.AndroidPlatformHelper.isReady()) {
+            org.linphone.core.tools.AndroidPlatformHelper.instance().setServiceRunningAsForeground(true);
+        }
     }
 
     public void stopForeground() {
         LinphoneService.instance().stopForeground(true);
+        if (org.linphone.core.tools.AndroidPlatformHelper.isReady()) {
+            org.linphone.core.tools.AndroidPlatformHelper.instance().setServiceRunningAsForeground(false);
+        }
         mCurrentForegroundServiceNotification = 0;
     }
 
@@ -193,7 +208,7 @@ public class NotificationsManager {
                         mContext,
                         notif.getNotificationId(),
                         notifIntent,
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
+                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         Notification notification =
                 Compatibility.createMessageNotification(
@@ -246,7 +261,7 @@ public class NotificationsManager {
                         mContext,
                         notif.getNotificationId(),
                         notifIntent,
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT : PendingIntent.FLAG_UPDATE_CURRENT);
+                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         Notification notification =
                 Compatibility.createMessageNotification(
@@ -262,7 +277,7 @@ public class NotificationsManager {
                         mContext,
                         MISSED_CALLS_NOTIF_ID,
                         missedCallNotifIntent,
-                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
+                        PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         int missedCallCount =
                 LinphoneManager.getLcIfManagerNotDestroyedOrNull().getMissedCallsCount();
@@ -312,7 +327,7 @@ public class NotificationsManager {
 
         PendingIntent pendingIntent =
                 PendingIntent.getActivity(
-                        mContext, 0, callNotifIntent, Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
+                        mContext, 0, callNotifIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         Address address = call.getRemoteAddress();
         String addressAsString = address.asStringUriOnly();
@@ -355,7 +370,7 @@ public class NotificationsManager {
                 notificationTextId = R.string.incall_notif_outgoing;
                 break;
             default:
-                if (call.getCurrentParams().videoEnabled()) {
+                if (call.getCurrentParams().isVideoEnabled()) {
                     iconId = R.drawable.topbar_videocall_notification;
                     notificationTextId = R.string.incall_notif_video;
                 } else {
@@ -378,9 +393,8 @@ public class NotificationsManager {
         Bitmap bm = ImageUtils.getRoundBitmapFromUri(mContext, pictureUri);
         String name = LinphoneUtils.getAddressDisplayName(address);
 
-        boolean showAnswerAction = false;
-//                call.getState() == Call.State.IncomingReceived
-//                        || call.getState() == Call.State.IncomingEarlyMedia;
+        boolean showAnswerAction = call.getState() == Call.State.IncomingReceived
+                || call.getState() == Call.State.IncomingEarlyMedia;
         Notification notification =
                 Compatibility.createInCallNotification(
                         mContext,
@@ -421,7 +435,7 @@ public class NotificationsManager {
         notifIntent.putExtra("GoToInapp", true);
         PendingIntent pendingIntent =
                 PendingIntent.getActivity(
-                        mContext, IN_APP_NOTIF_ID, notifIntent, Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
+                        mContext, IN_APP_NOTIF_ID, notifIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
         Notification notif =
                 Compatibility.createSimpleNotification(

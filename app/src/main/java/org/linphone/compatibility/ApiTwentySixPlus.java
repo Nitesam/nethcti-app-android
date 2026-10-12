@@ -45,8 +45,12 @@ class ApiTwentySixPlus {
         String name =
                 Settings.Global.getString(
                         context.getContentResolver(), Settings.Global.DEVICE_NAME);
-        if (name == null) {
-            name = BluetoothAdapter.getDefaultAdapter().getName();
+        if (name == null && (Build.VERSION.SDK_INT < 31
+                || androidx.core.content.ContextCompat.checkSelfPermission(context,
+                        android.Manifest.permission.BLUETOOTH_CONNECT)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED)) {
+            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+            if (adapter != null) name = adapter.getName();
         }
         if (name == null) {
             name = Settings.Secure.getString(context.getContentResolver(), "bluetooth_name");
@@ -74,12 +78,17 @@ class ApiTwentySixPlus {
         CharSequence name = context.getString(R.string.content_title_notification_service);
         String description = context.getString(R.string.content_title_notification_service);
         NotificationChannel channel =
-                new NotificationChannel(id, name, NotificationManager.IMPORTANCE_NONE);
+                new NotificationChannel(id, name, NotificationManager.IMPORTANCE_LOW);
         channel.setDescription(description);
         channel.enableVibration(false);
         channel.enableLights(false);
         channel.setShowBadge(false);
         notificationManager.createNotificationChannel(channel);
+        NotificationChannel calls = new NotificationChannel("incoming_calls_v2",
+                context.getString(R.string.incall_notif_incoming), NotificationManager.IMPORTANCE_HIGH);
+        calls.setSound(null, null); // The SIP core plays the ringtone.
+        calls.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        notificationManager.createNotificationChannel(calls);
     }
 
     public static void createMessageChannel(Context context) {
@@ -152,7 +161,7 @@ class ApiTwentySixPlus {
         Notification.Builder builder =
                 new Notification.Builder(
                                 context,
-                                context.getString(R.string.notification_service_channel_id))
+                                showAnswerAction ? "incoming_calls_v2" : context.getString(R.string.notification_service_channel_id))
                         .setContentTitle(contactName)
                         .setContentText(msg)
                         .setSmallIcon(iconID)
@@ -169,6 +178,7 @@ class ApiTwentySixPlus {
                 ;
 
         if (showAnswerAction) {
+            builder.setFullScreenIntent(intent, true);
             builder.addAction(ApiTwentyFourPlus.getCallAnswerAction(context, callId));
         }
         return builder.build();

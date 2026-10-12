@@ -53,7 +53,9 @@ class NethCTIApplication : Application(), LifecycleEventObserver {
         super.onCreate()
         _instance = this
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+        if (FirebaseApp.initializeApp(this) != null) {
+            FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(true)
+        }
 
         val darkMode = LinphonePreferences.instance().apply {
             setContext(instance)

@@ -37,7 +37,7 @@ import org.linphone.contacts.ContactsManager;
 import org.linphone.contacts.LinphoneContact;
 import org.linphone.core.Address;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomCapabilities;
+
 import org.linphone.core.Core;
 import org.linphone.core.ParticipantDevice;
 import org.linphone.fragments.FragmentsAvailable;
@@ -158,7 +158,7 @@ public class DevicesFragment extends Fragment {
     }
 
     private void initHeader() {
-        if (mRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt())) {
+        if (mRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt())) {
             Address remoteParticipantAddr = mRoomAddr;
             if (mRoom.getParticipants().length > 0) {
                 remoteParticipantAddr = mRoom.getParticipants()[0].getAddress();
@@ -185,7 +185,7 @@ public class DevicesFragment extends Fragment {
         }
 
         if (mRoom != null && mRoom.getNbParticipants() > 0) {
-            mOnlyDisplayChilds = mRoom.hasCapability(ChatRoomCapabilities.OneToOne.toInt());
+            mOnlyDisplayChilds = mRoom.hasCapability(ChatRoom.Capabilities.OneToOne.toInt());
             mAdapter.updateListItems(Arrays.asList(mRoom.getParticipants()), mOnlyDisplayChilds);
         }
     }

@@ -19,6 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 package org.linphone.chat;
 
+import org.linphone.core.Friend;
 import static android.content.Context.INPUT_METHOD_SERVICE;
 
 import androidx.fragment.app.Fragment;
@@ -52,11 +53,11 @@ import org.linphone.contacts.SearchContactViewHolder;
 import org.linphone.contacts.SearchContactsAdapter;
 import org.linphone.core.Address;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomBackend;
+
 import org.linphone.core.ChatRoomListenerStub;
 import org.linphone.core.ChatRoomParams;
 import org.linphone.core.Core;
-import org.linphone.core.FriendCapability;
+
 import org.linphone.core.ProxyConfig;
 import org.linphone.core.SearchResult;
 import org.linphone.core.tools.Log;
@@ -268,7 +269,6 @@ public class ChatRoomCreationFragment extends Fragment
             }
 
             if (fileSharedUri != null) {
-                LinphoneActivity.instance().checkAndRequestPermissionsToSendImage();
                 mShareInfos.putString("fileSharedUri", fileSharedUri);
             }
 
@@ -316,7 +316,7 @@ public class ChatRoomCreationFragment extends Fragment
             List<ContactAddress> toToggle = new ArrayList<>();
             for (ContactAddress ca : mSearchAdapter.getContactsSelectedList()) {
                 // If the ContactAddress doesn't have a contact keep it anyway
-                if (ca.getContact() != null && !ca.hasCapability(FriendCapability.LimeX3Dh)) {
+                if (ca.getContact() != null && !ca.hasCapability(Friend.Capability.LimeX3Dh)) {
                     toToggle.add(ca);
                 } else {
                     if (ca.getView() != null) {
@@ -532,14 +532,14 @@ public class ChatRoomCreationFragment extends Fragment
         ProxyConfig lpc = lc.getDefaultProxyConfig();
         boolean createEncryptedChatRoom = mSecurityToggle.isChecked();
 
-        if (createEncryptedChatRoom && !searchResult.hasCapability(FriendCapability.LimeX3Dh)) {
+        if (createEncryptedChatRoom && !searchResult.hasCapability(Friend.Capability.LimeX3Dh)) {
             Log.w(
                     "[Chat Room Creation] Contact "
                             + searchResult.getFriend()
                             + " doesn't have LIME X3DH capability !");
             return;
         } else if (mCreateGroupChatRoom
-                && !searchResult.hasCapability(FriendCapability.GroupChat)) {
+                && !searchResult.hasCapability(Friend.Capability.GroupChat)) {
             Log.w(
                     "[Chat Room Creation] Contact "
                             + searchResult.getFriend()
@@ -574,8 +574,8 @@ public class ChatRoomCreationFragment extends Fragment
                 } else {
                     ChatRoomParams params = lc.createDefaultChatRoomParams();
                     // This will set the backend to FlexisipChat automatically
-                    params.enableEncryption(true);
-                    params.enableGroup(false);
+                    params.setEncryptionEnabled(true);
+                    params.setGroupEnabled(false);
 
                     Address participants[] = new Address[1];
                     participants[0] = address;
@@ -601,10 +601,10 @@ public class ChatRoomCreationFragment extends Fragment
                         mWaitLayout.setVisibility(View.VISIBLE);
 
                         ChatRoomParams params = lc.createDefaultChatRoomParams();
-                        params.enableEncryption(false);
-                        params.enableGroup(false);
+                        params.setEncryptionEnabled(false);
+                        params.setGroupEnabled(false);
                         // We don't want a basic chat room
-                        params.setBackend(ChatRoomBackend.FlexisipChat);
+                        params.setBackend(ChatRoom.Backend.FlexisipChat);
 
                         Address participants[] = new Address[1];
                         participants[0] = address;

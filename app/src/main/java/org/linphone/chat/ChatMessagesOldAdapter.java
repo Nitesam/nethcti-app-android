@@ -21,10 +21,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import static android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION;
 
-import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -212,7 +210,7 @@ public class ChatMessagesOldAdapter extends SelectableAdapter<ChatMessageOldView
                 }
 
                 if (!message.isSecured()
-                        && LinphoneManager.getLc().limeEnabled() == LimeState.Mandatory
+                        && message.getChatRoom().getCurrentParams().isEncryptionEnabled()
                         && status != ChatMessage.State.InProgress) {
                     holder.messageStatus.setVisibility(View.VISIBLE);
                     holder.messageStatus.setImageResource(R.drawable.chat_unsecure);
@@ -358,41 +356,29 @@ public class ChatMessagesOldAdapter extends SelectableAdapter<ChatMessageOldView
                             new View.OnClickListener() {
                                 @Override
                                 public void onClick(View v) {
-                                    if (mContext.getPackageManager()
-                                                    .checkPermission(
-                                                            Manifest.permission
-                                                                    .WRITE_EXTERNAL_STORAGE,
-                                                            mContext.getPackageName())
-                                            == PackageManager.PERMISSION_GRANTED) {
-                                        v.setEnabled(false);
-                                        String filename =
-                                                message.getFileTransferInformation().getName();
-                                        File file =
+                                    v.setEnabled(false);
+                                    String filename =
+                                            message.getFileTransferInformation().getName();
+                                    File file =
+                                            new File(
+                                                    FileUtils.getStorageDirectory(mContext),
+                                                    filename);
+                                    int prefix = 1;
+                                    while (file.exists()) {
+                                        file =
                                                 new File(
                                                         FileUtils.getStorageDirectory(mContext),
-                                                        filename);
-                                        int prefix = 1;
-                                        while (file.exists()) {
-                                            file =
-                                                    new File(
-                                                            FileUtils.getStorageDirectory(mContext),
-                                                            prefix + "_" + filename);
-                                            Log.w(
-                                                    "File with that name already exists, renamed to "
-                                                            + prefix
-                                                            + "_"
-                                                            + filename);
-                                            prefix += 1;
-                                        }
-                                        message.getFileTransferInformation().setFilePath(file.getPath());
-                                        message.downloadContent(message.getFileTransferInformation());
-
-                                    } else {
+                                                        prefix + "_" + filename);
                                         Log.w(
-                                                "WRITE_EXTERNAL_STORAGE permission not granted, won't be able to store the downloaded file");
-                                        LinphoneActivity.instance()
-                                                .checkAndRequestExternalStoragePermission();
+                                                "File with that name already exists, renamed to "
+                                                        + prefix
+                                                        + "_"
+                                                        + filename);
+                                        prefix += 1;
                                     }
+                                    message.getFileTransferInformation().setFilePath(file.getPath());
+                                    message.downloadContent(message.getFileTransferInformation());
+
                                 }
                             });
                 }

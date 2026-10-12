@@ -46,7 +46,7 @@ import androidx.annotation.Nullable;
 import org.linphone.LinphoneManager;
 import org.linphone.R;
 import org.linphone.core.AccountCreator;
-import org.linphone.core.AccountCreatorListener;
+import org.linphone.compatibility.DefaultAccountCreatorListener;
 import org.linphone.core.DialPlan;
 import org.linphone.settings.LinphonePreferences;
 import org.linphone.utils.LinphoneUtils;
@@ -57,7 +57,7 @@ public class LinphoneLoginFragment extends Fragment
         implements CompoundButton.OnCheckedChangeListener,
                 OnClickListener,
                 TextWatcher,
-                AccountCreatorListener {
+                DefaultAccountCreatorListener {
     private EditText mLogin, mPassword, mPhoneNumberEdit, mDialCode;
     private Button mApply, mSelectCountry;
     private CheckBox mUseUsername;
@@ -76,7 +76,7 @@ public class LinphoneLoginFragment extends Fragment
         mAccountCreator =
                 LinphoneManager.getLc()
                         .createAccountCreator(LinphonePreferences.instance().getXmlrpcUrl());
-        mAccountCreator.setListener(this);
+        mAccountCreator.addListener(this);
 
         mLogin = view.findViewById(R.id.assistant_username);
         mLogin.addTextChangedListener(this);

@@ -1,7 +1,8 @@
 apply plugin: 'com.android.application'
-apply plugin: 'com.google.gms.google-services'
-apply plugin: 'com.google.firebase.crashlytics'
-apply plugin: 'kotlin-android'
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+    apply plugin: 'com.google.firebase.crashlytics'
+}
 
 static def getPackageName() {
     return "it.nethesis.nethctiapp" // "org.linphone"
@@ -30,7 +31,6 @@ static def isLocalAarAvailable() {
 
 def excludeFiles = []
 if (!firebaseEnabled()) {
-    excludeFiles.add('**/Firebase*')
     println '[Push Notification] Firebase disabled'
 }
 
@@ -42,27 +42,12 @@ excludePackage.add('**/**tester**')
 excludePackage.add('**/LICENSE.txt')
 
 
-def gitVersion = new ByteArrayOutputStream()
-
-task getGitVersion {
-    exec {
-        commandLine 'git', 'describe', '--always'
-        standardOutput = gitVersion
-    }
-    doLast {
-        gitVersion = gitVersion.toString().trim()
-        println("Git version: " + gitVersion)
-    }
-}
-
-project.tasks['preBuild'].dependsOn 'getGitVersion'
-
 /////////////////////////
 
 repositories {
     maven {
         // Replace snapshots by releases for releases !
-        url "https://linphone.org/maven_repository"
+        url "https://download.linphone.org/maven_repository"
     }
 }
 
@@ -71,35 +56,41 @@ android {
         abortOnError false
     }
 
-    compileSdkVersion 33
-    buildToolsVersion '33.0.0'
+    namespace 'org.linphone'
+    compileSdk 37
+    buildToolsVersion '37.0.0'
 
-    defaultConfig {
-        minSdkVersion 28
-        targetSdkVersion 33
-        versionCode 4224
-        versionName '1.5.2'
-        applicationId getPackageName()
-        multiDexEnabled true
-        manifestPlaceholders = [linphone_address_mime_type: "vnd.android.cursor.item/vnd." + getPackageName() + ".provider.sip_address"]
+    buildFeatures {
+        buildConfig true
+        resValues true
     }
 
-    applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "nethctiapp-android-${variant.buildType.name}-${gitVersion.toString().trim()}.apk"
-        }
+    defaultConfig {
+        minSdk 28
+        targetSdk 37
+        versionCode 4227
+        versionName '1.6.2'
+        applicationId getPackageName()
+        multiDexEnabled true
+        testInstrumentationRunner 'org.linphone.LocalCallInstrumentation'
+        manifestPlaceholders = [linphone_address_mime_type: "vnd.android.cursor.item/vnd." + getPackageName() + ".provider.sip_address"]
     }
 
     def keystorePropertiesFile = rootProject.file("keystore.properties")
     def keystoreProperties = new Properties()
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    }
+    def releaseKeystore = keystoreProperties.getProperty('storeFile', '')
+    def hasReleaseSigning = !releaseKeystore.isEmpty() && file(releaseKeystore).isFile()
     signingConfigs {
-        release {
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
         }
     }
 
@@ -107,10 +98,10 @@ android {
         release {
             minifyEnabled true
             debuggable false
-            jniDebuggable true
+            jniDebuggable false
 
-            signingConfig signingConfigs.release
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
 
             resValue "string", "sync_account_type", getPackageName() + ".sync"
             resValue "string", "file_provider", getPackageName() + ".provider"
@@ -124,10 +115,11 @@ android {
             debuggable true
             jniDebuggable true
             versionNameSuffix '-debug'
+            applicationIdSuffix '.debug'
 
-            resValue "string", "sync_account_type", getPackageName() + ".sync"
-            resValue "string", "file_provider", getPackageName() + ".provider"
-            resValue "string", "linphone_address_mime_type", "vnd.android.cursor.item/vnd." + getPackageName() + ".provider.sip_address"
+            resValue "string", "sync_account_type", getPackageName() + ".debug.sync"
+            resValue "string", "file_provider", getPackageName() + ".debug.provider"
+            resValue "string", "linphone_address_mime_type", "vnd.android.cursor.item/vnd." + getPackageName() + ".debug.provider.sip_address"
 
             if (!firebaseEnabled()) {
                 resValue "string", "gcm_defaultSenderId", "none"
@@ -139,11 +131,6 @@ android {
         main {
             java.excludes = excludeFiles
 
-            packagingOptions {
-                resources {
-                    excludes = excludePackage
-                }
-            }
             res.srcDirs = ['src/main/res', 'src/main/res/values/neth_strings']
             resources.srcDirs = ['src/main/resources', 'src/main/res/values/neth_strings']
         }
@@ -157,6 +144,7 @@ android {
             pickFirsts += 'META-INF/com.android.tools/proguard/coroutines.pro'
             pickFirsts += 'META-INF/proguard/coroutines.pro'
             excludes += 'META-INF/MANIFEST.MF'
+            excludes += excludePackage
             //excludes = excludePackage
         }
     }
@@ -169,19 +157,16 @@ android {
 }
 
 dependencies {
-    if (firebaseEnabled()) {
-        implementation platform('com.google.firebase:firebase-bom:25.12.0')
-        implementation 'com.google.firebase:firebase-crashlytics-ktx'
-        implementation 'com.google.firebase:firebase-analytics-ktx'
-    }
+    implementation platform('com.google.firebase:firebase-bom:33.16.0')
+    implementation 'com.google.firebase:firebase-crashlytics'
     implementation 'org.apache.commons:commons-compress:1.20'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.8.0'
-    implementation 'com.google.android:flexbox:1.1.0'
+    implementation 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'com.github.bumptech.glide:glide:4.14.2'
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
-    implementation 'com.google.firebase:firebase-messaging:23.1.2'
+    implementation 'com.google.firebase:firebase-messaging'
     /*
      * We use retrofit to do calls to nethctiapp web services.
      */
@@ -189,7 +174,6 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.9.3'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.9.1'
-    implementation 'org.conscrypt:conscrypt-android:2.4.0'
     implementation 'com.google.code.gson:gson:2.9.1'
 
     implementation 'androidx.emoji:emoji:1.1.0'
@@ -204,11 +188,11 @@ dependencies {
             debugImplementation project(path: ":linphone-sdk-android", configuration: 'debug')
         }
     } else {
-        implementation "org.linphone:linphone-sdk-android:4.5.26"
+        implementation "org.linphone:linphone-sdk-android:5.4.127"
     }
 }
 
-task generateContactsXml(type: Copy) {
+tasks.register('generateContactsXml', Copy) {
     from 'contacts.xml'
     into "src/main/res/xml/"
     filter {
@@ -219,4 +203,4 @@ task generateContactsXml(type: Copy) {
 
     }
 }
-project.tasks['preBuild'].dependsOn 'generateContactsXml'
+tasks.named('preBuild').configure { dependsOn 'generateContactsXml' }

@@ -1,0 +1,7 @@
+Local SIP peer ready: 127.0.0.1:15060
+INVITE sip:loopback@10.0.2.2:15060;transport=udp SIP/2.0
+BYE sip:loopback@10.0.2.2:15060 SIP/2.0
+{"direction": "outgoing", "rtp_received": 200, "rtp_sent": 152, "hangup": true}
+Incoming INVITE sent
+BYE sip:loopback@10.0.2.2:15060 SIP/2.0
+{"direction": "incoming", "rtp_received": 124, "rtp_sent": 93, "hangup": true}

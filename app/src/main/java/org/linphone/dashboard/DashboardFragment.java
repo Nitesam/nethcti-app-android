@@ -176,19 +176,14 @@ public class DashboardFragment extends Fragment implements ContactsUpdatedListen
     private void setButtonListener(final MaterialButton button) {
         button.setOnClickListener(
                 view -> {
-                    switch (button.getId()) {
-                        case R.id.dialer_btn:
-                            LinphoneActivity.instance().displayDialer();
-                            break;
-                        case R.id.history_btn:
-                            LinphoneActivity.instance().displayHistory();
-                            break;
-                        case R.id.contacts_btn:
-                            LinphoneActivity.instance().displayContacts(false);
-                            break;
-                        case R.id.presence_btn:
-                            LinphoneActivity.instance().displayUsersByPresence();
-                            break;
+                    if (button.getId() == R.id.dialer_btn) {
+                        LinphoneActivity.instance().displayDialer();
+                    } else if (button.getId() == R.id.history_btn) {
+                        LinphoneActivity.instance().displayHistory();
+                    } else if (button.getId() == R.id.contacts_btn) {
+                        LinphoneActivity.instance().displayContacts(false);
+                    } else if (button.getId() == R.id.presence_btn) {
+                        LinphoneActivity.instance().displayUsersByPresence();
                     }
                 });
     }

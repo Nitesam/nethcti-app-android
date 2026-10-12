@@ -232,7 +232,7 @@ public class CallOutgoingActivity extends LinphoneGenericActivity implements OnC
         if (id == R.id.micro) {
             mIsMicMuted = !mIsMicMuted;
             mMicro.setSelected(mIsMicMuted);
-            LinphoneManager.getLc().enableMic(!mIsMicMuted);
+            LinphoneManager.getLc().setMicEnabled(!mIsMicMuted);
         }
         if (id == R.id.speaker) {
             mIsSpeakerEnabled = !mIsSpeakerEnabled;
@@ -296,8 +296,7 @@ public class CallOutgoingActivity extends LinphoneGenericActivity implements OnC
             Log.i("[Permission] Asking for record audio");
             permissionsList.add(Manifest.permission.RECORD_AUDIO);
         }
-        if (LinphonePreferences.instance().shouldInitiateVideoCall()
-                || LinphonePreferences.instance().shouldAutomaticallyAcceptVideoRequests()) {
+        if (mCall != null && mCall.getCurrentParams().isVideoEnabled()) {
             if (camera != PackageManager.PERMISSION_GRANTED) {
                 Log.i("[Permission] Asking for camera");
                 permissionsList.add(Manifest.permission.CAMERA);

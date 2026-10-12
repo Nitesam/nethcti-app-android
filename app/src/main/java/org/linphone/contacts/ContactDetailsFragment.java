@@ -19,6 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+import org.linphone.core.Friend;
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
@@ -46,12 +47,12 @@ import org.linphone.LinphoneManager;
 import org.linphone.R;
 import org.linphone.core.Address;
 import org.linphone.core.ChatRoom;
-import org.linphone.core.ChatRoomBackend;
+
 import org.linphone.core.ChatRoomListenerStub;
 import org.linphone.core.ChatRoomParams;
 import org.linphone.core.Core;
 import org.linphone.core.Factory;
-import org.linphone.core.FriendCapability;
+
 import org.linphone.core.PresenceBasicStatus;
 import org.linphone.core.PresenceModel;
 import org.linphone.core.ProxyConfig;
@@ -122,11 +123,11 @@ public class ContactDetailsFragment extends Fragment
                                     mWaitLayout.setVisibility(View.VISIBLE);
 
                                     ChatRoomParams params = lc.createDefaultChatRoomParams();
-                                    params.enableEncryption(isSecured);
-                                    params.enableGroup(false);
+                                    params.setEncryptionEnabled(isSecured);
+                                    params.setGroupEnabled(false);
                                     // We don't want a basic chat room,
                                     // so if isSecured is false we have to set this manually
-                                    params.setBackend(ChatRoomBackend.FlexisipChat);
+                                    params.setBackend(ChatRoom.Backend.FlexisipChat);
 
                                     Address participants[] = new Address[1];
                                     participants[0] = participant;
@@ -367,7 +368,7 @@ public class ContactDetailsFragment extends Fragment
 
                 if (v.findViewById(R.id.friendLinphone).getVisibility() == View.VISIBLE
                         && mContact.hasPresenceModelForUriOrTelCapability(
-                                noa.getValue(), FriendCapability.LimeX3Dh)) {
+                                noa.getValue(), Friend.Capability.LimeX3Dh)) {
                     v.findViewById(R.id.contact_chat_secured).setVisibility(View.VISIBLE);
                 } else {
                     v.findViewById(R.id.contact_chat_secured).setVisibility(GONE);
@@ -533,7 +534,7 @@ public class ContactDetailsFragment extends Fragment
 
             if (v.findViewById(R.id.friendLinphone).getVisibility() == View.VISIBLE
                     && mContact.hasPresenceModelForUriOrTelCapability(
-                            noa.getValue(), FriendCapability.LimeX3Dh)) {
+                            noa.getValue(), Friend.Capability.LimeX3Dh)) {
                 v.findViewById(R.id.contact_chat_secured).setVisibility(View.VISIBLE);
             } else {
                 v.findViewById(R.id.contact_chat_secured).setVisibility(GONE);

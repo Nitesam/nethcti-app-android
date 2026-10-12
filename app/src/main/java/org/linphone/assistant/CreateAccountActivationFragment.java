@@ -34,12 +34,12 @@ import androidx.annotation.Nullable;
 import org.linphone.LinphoneManager;
 import org.linphone.R;
 import org.linphone.core.AccountCreator;
-import org.linphone.core.AccountCreatorListener;
+import org.linphone.compatibility.DefaultAccountCreatorListener;
 import org.linphone.core.tools.Log;
 import org.linphone.settings.LinphonePreferences;
 
 public class CreateAccountActivationFragment extends Fragment
-        implements OnClickListener, AccountCreatorListener {
+        implements OnClickListener, DefaultAccountCreatorListener {
     private String mUsername, mPassword;
     private Button mCheckAccount;
     private TextView mEmail;
@@ -55,7 +55,7 @@ public class CreateAccountActivationFragment extends Fragment
         mAccountCreator =
                 LinphoneManager.getLc()
                         .createAccountCreator(LinphonePreferences.instance().getXmlrpcUrl());
-        mAccountCreator.setListener(this);
+        mAccountCreator.addListener(this);
 
         mUsername = getArguments().getString("Username");
         mPassword = getArguments().getString("Password");

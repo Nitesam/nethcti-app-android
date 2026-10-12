@@ -53,14 +53,14 @@ import org.linphone.core.Address;
 import org.linphone.core.Core;
 import org.linphone.core.Friend;
 import org.linphone.core.FriendList;
-import org.linphone.core.FriendListListener;
+import org.linphone.compatibility.DefaultFriendListListener;
 import org.linphone.core.MagicSearch;
 import org.linphone.core.ProxyConfig;
 import org.linphone.core.tools.Log;
 import org.linphone.settings.LinphonePreferences;
 import org.linphone.utils.LinphoneUtils;
 
-public class ContactsManager extends ContentObserver implements FriendListListener {
+public class ContactsManager extends ContentObserver implements DefaultFriendListListener {
     private static ContactsManager sInstance;
 
     private boolean isAvailable;

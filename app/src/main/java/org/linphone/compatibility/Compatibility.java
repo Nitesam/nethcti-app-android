@@ -46,18 +46,7 @@ public class Compatibility {
     public static final String INTENT_MARK_AS_READ_ACTION = "org.linphone.MARK_AS_READ_ACTION";
 
     public static String getDeviceName(Context context) {
-        if (Version.sdkAboveOrEqual(25)) {
-            return ApiTwentySixPlus.getDeviceName(context);
-        }
-
-        String name = BluetoothAdapter.getDefaultAdapter().getName();
-        if (name == null) {
-            name = Settings.Secure.getString(context.getContentResolver(), "bluetooth_name");
-        }
-        if (name == null) {
-            name = Build.MANUFACTURER + " " + Build.MODEL;
-        }
-        return name;
+        return ApiTwentySixPlus.getDeviceName(context);
     }
 
     public static void createNotificationChannels(Context context) {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="restart_after_boot">Open NethCTI to reconnect after restarting your phone</string>
+    <string name="local_network_permission_denied">Local network access denied. A PBX on your local network may be unreachable.</string>
+    <string name="choose_attachment">Choose a file</string>
+    <string name="take_attachment_photo">Take a photo</string>
+    <string name="attachment_open_failed">Unable to open this attachment.</string>
+</resources>
