@@ -8,7 +8,7 @@
   <string name="reception_need_notifications">Allow notifications</string>
   <string name="reception_need_channel">Incoming calls channel: sound and high importance</string>
   <string name="reception_need_screen">Allow full-screen notifications</string>
-  <string name="reception_need_battery">Remove battery restrictions</string>
+  <string name="reception_need_battery">Configure background operation</string>
   <string name="reception_need_dnd">Allow the incoming calls channel to interrupt Do Not Disturb</string>
   <string name="reception_need_network">Allow local network access in app permissions</string>
   <string name="reception_sound_blocked">Ringing blocked by system settings</string>
@@ -18,4 +18,25 @@
   <string name="reception_outgoing_failed">Registration failed; the call was not started. Retry when the connection is available.</string>
   <string name="reception_start_blocked">Android blocked service startup. Reopen the app and enable reception again.</string>
   <string name="reception_configure">Configure reception</string>
+    <string name="reception_notifications">Notifications</string>
+    <string name="reception_notifications_permission_help">Allow call alerts in Android notification settings.</string>
+    <string name="reception_notifications_help">Keep app notifications enabled in Android settings.</string>
+    <string name="reception_channel">Incoming call alerts</string>
+    <string name="reception_channel_help">Choose an audible ringtone and high importance. Tap to open the call channel.</string>
+    <string name="reception_full_screen">Full-screen call alerts</string>
+    <string name="reception_screen_help">Allow incoming calls to appear when the screen is locked.</string>
+    <string name="reception_background">Background operation</string>
+    <string name="reception_battery_help">Open battery settings. Device makers may apply additional background limits.</string>
+    <string name="reception_dnd">Do Not Disturb</string>
+    <string name="reception_dnd_help">Allow the incoming call channel to ring during Do Not Disturb. Tap to review settings.</string>
+    <string name="reception_local_network">Local network</string>
+    <string name="reception_network_help">Open app permissions to allow access to the local phone system.</string>
+    <string name="reception_ready">Configured</string>
+    <string name="reception_to_configure">Setup needed</string>
+    <string name="reception_manual_check">Manual check</string>
+    <string name="reception_battery_exempt">Android battery optimization excluded</string>
+    <string name="reception_battery_exempt_help">Android battery optimization is already excluded. In app info, review any additional battery restrictions.</string>
+    <string name="reception_battery_request_help">Allow background operation in the Android dialog. Returning without consent leaves this setting incomplete.</string>
+    <string name="reception_open_settings">Open settings</string>
+    <string name="reception_settings_unavailable">Android could not open these settings. Open phone Settings, then Apps, NethCTI. Review Notifications, Permissions and Battery. Menu names vary by device.</string>
 </resources>

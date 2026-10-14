@@ -29,6 +29,9 @@ public final class LocalCallInstrumentation extends Instrumentation {
     private boolean testReception;
     private boolean testRevokedNotifications;
     private boolean testDndGrant;
+    private boolean testSetup;
+    private int expectedPageSize;
+    private String upgradeMode;
     private long receptionIdleMillis = 95000;
     private final CountDownLatch incoming = new CountDownLatch(1);
     private final CountDownLatch incomingMedia = new CountDownLatch(1);
@@ -41,17 +44,24 @@ public final class LocalCallInstrumentation extends Instrumentation {
         testRevokedNotifications = arguments != null && "true".equals(arguments.getString("revoked_notifications"));
         testDndGrant = arguments != null && "true".equals(arguments.getString("dnd_grant"));
         if (arguments != null) receptionIdleMillis = Long.parseLong(arguments.getString("reception_idle_ms", "95000"));
+        upgradeMode = arguments == null ? null : arguments.getString("upgrade");
+        testSetup = arguments != null && "true".equals(arguments.getString("setup"));
+        expectedPageSize = arguments == null ? 0 : Integer.parseInt(arguments.getString("page_size", "0"));
         start();
     }
 
     @Override public void onStart() {
+        if (upgradeMode != null) { new UpgradeScenarios(this).run("seed".equals(upgradeMode)); return; }
+        if (testSetup) { new SetupScenarios(this).run(); return; }
         if (testReception) { new ReceptionScenarios(this, receptionIdleMillis).run(); return; }
         Bundle result = new Bundle();
         int resultCode = Activity.RESULT_CANCELED;
         try {
             require("ranchu".equals(Build.HARDWARE), "Only run on the dedicated emulator");
-            require(Build.VERSION.SDK_INT >= 37, "Android 17 required");
-            require(Os.sysconf(OsConstants._SC_PAGESIZE) == 16384, "16 KB pages required");
+            require(Build.VERSION.SDK_INT >= 28, "Android 9 or later required");
+            if (expectedPageSize != 0) require(Os.sysconf(OsConstants._SC_PAGESIZE) == expectedPageSize, "Unexpected memory page size");
+            result.putInt("android_api", Build.VERSION.SDK_INT);
+            result.putLong("page_size", Os.sysconf(OsConstants._SC_PAGESIZE));
             if (testDndGrant) {
                 android.app.NotificationManager notifications = getTargetContext().getSystemService(android.app.NotificationManager.class);
                 require(!notifications.isNotificationPolicyAccessGranted(), "Start with DND access revoked on a fresh emulator install");
@@ -146,11 +156,13 @@ public final class LocalCallInstrumentation extends Instrumentation {
                     require(call != null, "No current call");
                     bandwidth[0] = call.getAudioStats().getUploadBandwidth();
                     bandwidth[1] = call.getAudioStats().getDownloadBandwidth();
-                    serviceType[0] = LinphoneService.instance().getForegroundServiceType();
+                    if (Build.VERSION.SDK_INT >= 29) serviceType[0] = LinphoneService.instance().getForegroundServiceType();
                 });
             } while ((bandwidth[0] <= 0 || bandwidth[1] <= 0) && SystemClock.elapsedRealtime() < deadline);
             require(bandwidth[0] > 0 && bandwidth[1] > 0, "No bidirectional RTP: " + bandwidth[0] + "/" + bandwidth[1]);
-            require((serviceType[0] & 132) == 132, "Missing phoneCall/microphone service type: " + serviceType[0]);
+            if (Build.VERSION.SDK_INT >= 30) require((serviceType[0] & 132) == 132, "Missing phoneCall/microphone service type: " + serviceType[0]);
+            else if (Build.VERSION.SDK_INT >= 29) require((serviceType[0] & 4) == 4, "Missing phoneCall service type");
+            else require(ReceptionScenarios.isForeground(this), "Service is not foreground");
             result.putString("rtp_kbit_per_second", bandwidth[0] + "/" + bandwidth[1]);
             result.putInt("foreground_service_type", serviceType[0]);
             int[] packets = new int[4];

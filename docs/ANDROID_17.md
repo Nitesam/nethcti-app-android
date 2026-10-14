@@ -1,4 +1,8 @@
-# Port Android 17 — APK di prova
+# Note storiche del port Android 17
+
+La versione corrente è un client Android 9–17. Vedere il README e le note della
+pre-release per configurazione adattiva e collaudi correnti. Questo documento
+conserva il percorso e le evidenze delle versioni precedenti.
 
 Branch `android-17`, base upstream `97d80d7fa`.
 

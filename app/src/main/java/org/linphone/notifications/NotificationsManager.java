@@ -121,8 +121,7 @@ public class NotificationsManager {
 
     private void startPhoneService(int id, Notification notification) {
         if (Build.VERSION.SDK_INT >= 29) {
-            LinphoneService.instance().startForeground(id, notification,
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL);
+            LinphoneService.instance().startForeground(id, notification, phoneServiceTypes());
         } else {
             LinphoneService.instance().startForeground(id, notification);
         }
@@ -131,8 +130,31 @@ public class NotificationsManager {
         }
     }
 
+    @androidx.annotation.RequiresApi(29)
+    private int phoneServiceTypes() {
+        int types = android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL;
+        if (Build.VERSION.SDK_INT >= 30) {
+            org.linphone.core.Core core = LinphoneManager.getLcIfManagerNotDestroyedOrNull();
+            if (core != null) for (Call active : core.getCalls()) {
+                Call.State state = active.getState();
+                if (org.linphone.availability.ReceptionController.isRinging(active)
+                        || state == Call.State.End || state == Call.State.Released || state == Call.State.Error) continue;
+                if (androidx.core.content.ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.RECORD_AUDIO)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    types |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE;
+                }
+                if (active.getCurrentParams() != null && active.getCurrentParams().isVideoEnabled()
+                        && androidx.core.content.ContextCompat.checkSelfPermission(mContext, android.Manifest.permission.CAMERA)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    types |= android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA;
+                }
+            }
+        }
+        return types;
+    }
+
     public void ensureReceptionForeground() {
-        if (mCurrentForegroundServiceNotification == 0 || (Build.VERSION.SDK_INT >= 29 && LinphoneService.instance().getForegroundServiceType() == 0)) startForeground();
+        if (mCurrentForegroundServiceNotification == 0 || (Build.VERSION.SDK_INT >= 29 && LinphoneService.instance().getForegroundServiceType() != phoneServiceTypes())) startForeground();
     }
 
     public void updateReceptionStatus(String status) {

@@ -34,6 +34,18 @@ final class ReceptionScenarios {
         } while (SystemClock.elapsedRealtime() < end);
         throw new AssertionError(label + ": " + lastCallError);
     }
+    static boolean isForeground(Instrumentation test) {
+        if (!LinphoneService.isReady()) return false;
+        if (Build.VERSION.SDK_INT >= 29) return LinphoneService.instance().getForegroundServiceType() != 0;
+        for (ActivityManager.RunningServiceInfo service : test.getTargetContext().getSystemService(ActivityManager.class).getRunningServices(100)) {
+            if (service.service.getClassName().equals(LinphoneService.class.getName())) return service.foreground;
+        }
+        return false;
+    }
+    private void network(boolean enabled) throws Exception {
+        shell("svc wifi " + (enabled ? "enable" : "disable"));
+        shell("svc data " + (enabled ? "enable" : "disable"));
+    }
     private void incoming() throws Exception {
         try (DatagramSocket socket = new DatagramSocket()) {
             byte[] data = "INCOMING".getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -87,7 +99,11 @@ final class ReceptionScenarios {
                 for (ActivityManager.AppTask task : context.getSystemService(ActivityManager.class).getAppTasks()) task.finishAndRemoveTask();
             });
             SystemClock.sleep(idleMillis);
-            await("Survives old idle timeout", () -> LinphoneService.isReady() && LinphoneService.instance().getForegroundServiceType() != 0, 3000);
+            await("Survives old idle timeout", () -> isForeground(test), 3000);
+            if (Build.VERSION.SDK_INT >= 30) main(() -> {
+                if (LinphoneService.instance().getForegroundServiceType() != android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL)
+                    throw new AssertionError("Idle reception retains microphone/camera service types");
+            });
             AudioManager audio = context.getSystemService(AudioManager.class);
             main(() -> { audio.setStreamVolume(AudioManager.STREAM_RING, 0, 0); audio.setRingerMode(AudioManager.RINGER_MODE_SILENT); });
             int previousMode = audio.getRingerMode(), previousVolume = audio.getStreamVolume(AudioManager.STREAM_RING);
@@ -131,10 +147,10 @@ final class ReceptionScenarios {
             if (audio.getStreamVolume(AudioManager.STREAM_RING) != audio.getStreamMaxVolume(AudioManager.STREAM_RING)) throw new AssertionError("User volume overwritten");
             main(() -> reception.setEnabled(true));
             await("Registered before outage", () -> account.getState() == RegistrationState.Ok, 15000);
-            shell("cmd connectivity airplane-mode enable");
+            network(false);
             await("Default network lost", () -> context.getSystemService(android.net.ConnectivityManager.class).getActiveNetwork() == null, 15000);
             await("No false green while offline", () -> !reception.isConnected(), 3000);
-            shell("cmd connectivity airplane-mode disable");
+            network(true);
             await("Registration recovers after network outage", reception::isConnected, 45000);
             results.putString("network_recovery", "PASS: no default network, no crash/false green, automatic reconnection");
             results.putString("reception", "PASS: removed from recents + idle " + idleMillis + "ms, ring notification, silent override/restore, manual volume preserved, OFF rejects, OFF outgoing, temporary registration cleanup");
@@ -142,7 +158,7 @@ final class ReceptionScenarios {
         } catch (Throwable failure) {
             results.putString("failure", android.util.Log.getStackTraceString(failure));
         } finally {
-            try { shell("cmd connectivity airplane-mode disable"); } catch (Exception ignored) { }
+            try { network(true); } catch (Exception ignored) { }
             main(() -> { if (reception != null) reception.setEnabled(false); if (core != null) { core.terminateAllCalls(); if (account != null) core.removeProxyConfig(account); core.getConfig().sync(); } });
         }
         test.finish(code, results);

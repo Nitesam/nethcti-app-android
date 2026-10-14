@@ -8,7 +8,7 @@
     <string name="reception_need_notifications">Consenti le notifiche</string>
     <string name="reception_need_channel">Canale chiamate: suono e priorità alta</string>
     <string name="reception_need_screen">Consenti avvisi a schermo intero</string>
-    <string name="reception_need_battery">Rimuovi restrizioni di batteria</string>
+    <string name="reception_need_battery">Configura il funzionamento in background</string>
     <string name="reception_need_dnd">Consenti eccezione Non disturbare per il canale chiamate</string>
     <string name="reception_need_network">Consenti accesso alla rete locale nelle autorizzazioni</string>
     <string name="reception_sound_blocked">Squillo bloccato dalle impostazioni</string>
@@ -18,4 +18,25 @@
     <string name="reception_outgoing_failed">Registrazione non riuscita, chiamata non avviata. Riprova quando la connessione è disponibile.</string>
     <string name="reception_start_blocked">Avvio bloccato da Android, riapri la app e riattiva la ricezione</string>
     <string name="reception_configure">Configura ricezione</string>
+    <string name="reception_notifications">Notifiche</string>
+    <string name="reception_notifications_permission_help">Consenti gli avvisi delle chiamate nelle impostazioni notifiche di Android.</string>
+    <string name="reception_notifications_help">Mantieni attive le notifiche dell’app nelle impostazioni Android.</string>
+    <string name="reception_channel">Avvisi delle chiamate</string>
+    <string name="reception_channel_help">Scegli una suoneria udibile e priorità alta. Tocca per aprire il canale chiamate.</string>
+    <string name="reception_full_screen">Avvisi a schermo intero</string>
+    <string name="reception_screen_help">Consenti la visualizzazione delle chiamate quando lo schermo è bloccato.</string>
+    <string name="reception_background">Funzionamento in background</string>
+    <string name="reception_battery_help">Apri le impostazioni batteria. Il produttore può applicare ulteriori limiti alle attività in background.</string>
+    <string name="reception_dnd">Non disturbare</string>
+    <string name="reception_dnd_help">Consenti al canale chiamate di suonare con Non disturbare. Tocca per controllare le impostazioni.</string>
+    <string name="reception_local_network">Rete locale</string>
+    <string name="reception_network_help">Apri le autorizzazioni dell’app per consentire l’accesso al centralino sulla rete locale.</string>
+    <string name="reception_ready">Configurato</string>
+    <string name="reception_to_configure">Da configurare</string>
+    <string name="reception_manual_check">Verifica manuale</string>
+    <string name="reception_battery_exempt">Ottimizzazione Android esclusa</string>
+    <string name="reception_battery_exempt_help">L’ottimizzazione Android è già esclusa. Nelle informazioni dell’app controlla eventuali ulteriori restrizioni di batteria.</string>
+    <string name="reception_battery_request_help">Consenti il funzionamento in background nella finestra Android. Tornando senza consenso, questa impostazione resta da configurare.</string>
+    <string name="reception_open_settings">Apri impostazioni</string>
+    <string name="reception_settings_unavailable">Android non ha potuto aprire queste impostazioni. Apri Impostazioni del telefono, poi Applicazioni, NethCTI. Controlla Notifiche, Autorizzazioni e Batteria. I nomi dei menu variano secondo il dispositivo.</string>
 </resources>
