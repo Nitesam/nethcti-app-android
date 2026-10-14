@@ -162,6 +162,10 @@ import retrofit2.Response;
  */
 public class LinphoneManager extends org.linphone.core.CoreListenerStub implements SensorEventListener, DefaultAccountCreatorListener {
 
+    private org.linphone.audio.VoiceBoostController mVoiceBoost;
+
+    public org.linphone.audio.VoiceBoostController getVoiceBoost() { return mVoiceBoost; }
+
     private static final int LINPHONE_VOLUME_STREAM = STREAM_VOICE_CALL;
 
     private static LinphoneManager sInstance;
@@ -357,7 +361,12 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
     }
 
     public boolean isSpeakerEnabled() {
-        return mAudioManager != null && mAudioManager.isSpeakerphoneOn();
+        if (mAudioManager == null) return false;
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            android.media.AudioDeviceInfo device = mAudioManager.getCommunicationDevice();
+            return device != null && device.getType() == android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER;
+        }
+        return mAudioManager.isSpeakerphoneOn();
     }
 
     public boolean isBluetoothHeadSetEnabled() {
@@ -365,7 +374,28 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
     }
 
     public void enableSpeaker(boolean enable) {
-        mAudioManager.setSpeakerphoneOn(enable);
+        AudioDevice.Type type = enable ? AudioDevice.Type.Speaker : AudioDevice.Type.Earpiece;
+        if (mCore != null && mCore.getCallsNb() > 0) {
+            for (AudioDevice device : mCore.getExtendedAudioDevices()) {
+                if (device.getType() == type && device.hasCapability(AudioDevice.Capabilities.CapabilityPlay)) {
+                    AudioDevice current = mCore.getOutputAudioDevice();
+                    if (mVoiceBoost != null && (current == null || !current.getId().equals(device.getId()))) mVoiceBoost.reset();
+                    mCore.setOutputAudioDevice(device);
+                    return;
+                }
+            }
+        }
+        // No active SDK stream (e.g. calibration), or no matching SDK sound card.
+        if (mVoiceBoost != null) mVoiceBoost.reset();
+        if (android.os.Build.VERSION.SDK_INT >= 31) {
+            int target = enable ? android.media.AudioDeviceInfo.TYPE_BUILTIN_SPEAKER : android.media.AudioDeviceInfo.TYPE_BUILTIN_EARPIECE;
+            for (android.media.AudioDeviceInfo device : mAudioManager.getAvailableCommunicationDevices()) {
+                if (device.getType() == target && mAudioManager.setCommunicationDevice(device)) return;
+            }
+            if (!enable) mAudioManager.clearCommunicationDevice();
+        } else {
+            mAudioManager.setSpeakerphoneOn(enable);
+        }
     }
 
     public void routeAudioToSpeaker() {
@@ -633,6 +663,7 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
             // traces alway start with traces enable to not missed first initialization
             mCore = Factory.instance().createCore(configFile, mLinphoneFactoryConfigFile, c);
             mCore.addListener(this);
+            mVoiceBoost = new org.linphone.audio.VoiceBoostController(c, mCore);
             if (isPush) {
                 Log.w(
                         "[Manager] We are here because of a received push notification, enter background mode before starting the Core");
@@ -812,6 +843,7 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
 
     private void destroyLinphoneCore() {
         // This build has no push backend: stopping must unregister the SIP contact.
+        if (mVoiceBoost != null) mVoiceBoost.close();
         mCore.stop();
     }
 
@@ -1393,7 +1425,7 @@ public class LinphoneManager extends org.linphone.core.CoreListenerStub implemen
         // STREAM_VOICE_CALL volume stream
         mAudioManager.adjustStreamVolume(
                 LINPHONE_VOLUME_STREAM,
-                i < 0 ? AudioManager.ADJUST_LOWER : AudioManager.ADJUST_RAISE,
+                i == 0 ? AudioManager.ADJUST_SAME : (i < 0 ? AudioManager.ADJUST_LOWER : AudioManager.ADJUST_RAISE),
                 AudioManager.FLAG_SHOW_UI);
     }
 

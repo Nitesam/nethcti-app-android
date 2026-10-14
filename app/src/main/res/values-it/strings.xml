@@ -572,4 +572,9 @@
   <string name="logout_alert_message">Eseguendo il logout verranno cancellate le credenziali, sarà quindi necessario eseguire nuovamente la procedura di login.</string>
   <string name="alert_action_continue">Continua</string>
   <string name="alert_action_cancel">Annulla</string>
+    <string name="voice_boost">Amplifica voce</string>
+    <string name="voice_boost_level">Amplificazione: +%1$d dB</string>
+    <string name="voice_boost_hint">Amplifica la voce ricevuta, fino a +12 dB. Riduci se il suono distorce. Si azzera a fine chiamata o cambiando uscita audio.</string>
+    <string name="voice_boost_reset">Azzera</string>
+    <string name="voice_boost_unavailable">Amplificazione non disponibile per questa chiamata.</string>
 </resources>

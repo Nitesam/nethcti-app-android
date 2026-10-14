@@ -238,6 +238,7 @@ public class CallActivity extends LinphoneGenericActivity
                     @Override
                     public void onCallStateChanged(
                             Core lc, final Call call, Call.State state, String message) {
+                        refreshVoiceBoost();
                         if (LinphoneManager.getLc().getCallsNb() == 0) {
                             finish();
                             return;
@@ -424,6 +425,14 @@ public class CallActivity extends LinphoneGenericActivity
         return getResources().getBoolean(R.bool.isTablet);
     }
 
+    private androidx.appcompat.app.AlertDialog mVoiceBoostDialog;
+
+    private void refreshVoiceBoost() {
+        View button = findViewById(R.id.voice_boost);
+        org.linphone.audio.VoiceBoostController boost = LinphoneManager.getInstance().getVoiceBoost();
+        if (button != null) button.setEnabled(boost != null && boost.available());
+    }
+
     private void initUI() {
         mInflater = LayoutInflater.from(this);
         mContainer = findViewById(R.id.topLayout);
@@ -443,6 +452,15 @@ public class CallActivity extends LinphoneGenericActivity
 
         mSpeaker = findViewById(R.id.speaker);
         mSpeaker.setOnClickListener(this);
+
+        setVolumeControlStream(android.media.AudioManager.STREAM_VOICE_CALL);
+        findViewById(R.id.voice_boost).setOnClickListener(view -> {
+            org.linphone.audio.VoiceBoostController boost = LinphoneManager.getInstance().getVoiceBoost();
+            if (boost != null && boost.available()) {
+                mVoiceBoostDialog = org.linphone.audio.VoiceBoostDialog.show(this, LinphoneManager.getLc(), boost);
+            }
+        });
+        refreshVoiceBoost();
 
         // BottonBar
         mHangUp = findViewById(R.id.hang_up);
@@ -709,6 +727,7 @@ public class CallActivity extends LinphoneGenericActivity
     }
 
     private void enableAndRefreshInCallActions() {
+        refreshVoiceBoost();
         int confsize = 0;
 
         if (LinphoneManager.getLc().isInConference()) {
@@ -1051,7 +1070,6 @@ public class CallActivity extends LinphoneGenericActivity
         mSpeaker.setSelected(mIsSpeakerEnabled);
         if (mIsSpeakerEnabled) {
             LinphoneManager.getInstance().routeAudioToSpeaker();
-            LinphoneManager.getInstance().enableSpeaker(mIsSpeakerEnabled);
         } else {
             Log.d("Toggle mSpeaker off, routing back to earpiece");
             LinphoneManager.getInstance().routeAudioToReceiver();
@@ -1422,6 +1440,7 @@ public class CallActivity extends LinphoneGenericActivity
 
     @Override
     protected void onDestroy() {
+        if (mVoiceBoostDialog != null) mVoiceBoostDialog.dismiss();
         if(LinphoneManager.isInstanciated()) {
             LinphoneManager.getInstance().changeStatusToOnline();
             LinphoneManager.getInstance().enableProximitySensing(false);

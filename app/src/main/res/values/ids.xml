@@ -1,0 +1,4 @@
+<resources>
+    <item type="id" name="voice_boost_slider" />
+    <item type="id" name="voice_boost_level" />
+</resources>

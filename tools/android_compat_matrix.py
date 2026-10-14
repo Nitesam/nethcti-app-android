@@ -69,6 +69,7 @@ def test(api, label, args, output, peer=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--apis', default='28,29,30,31,32,33,34,35,36,37')
+    parser.add_argument('--audio-only', action='store_true', help='Focused call audio, route, boost UI and measured RTP tone regression')
     parser.add_argument('--attach', action='store_true', help='Use existing dedicated emulator for the first API')
     parser.add_argument('--output', type=Path, default=ROOT / 'docs/validation-1.6.5')
     options = parser.parse_args()
@@ -105,14 +106,27 @@ def main():
             adb('shell', 'pm', 'grant', PKG, 'android.permission.RECORD_AUDIO')
             if api >= 33: adb('shell', 'pm', 'grant', PKG, 'android.permission.POST_NOTIFICATIONS')
             if api >= 37: adb('shell', 'pm', 'grant', PKG, 'android.permission.ACCESS_LOCAL_NETWORK')
-            test(api, 'dnd', ['-e', 'dnd_grant', 'true'], output)
-            test(api, 'setup', ['-e', 'setup', 'true'], output)
-            with (output / 'setup.png').open('wb') as image:
-                subprocess.run([ADB, '-s', SERIAL, 'exec-out', 'run-as', PKG, 'cat', 'files/setup.png'], stdout=image, check=True)
-            test(api, 'rtp', ['-e', 'incoming', 'true', '-e', 'page_size', '16384' if api == 37 else '4096'],
-                 output, ['tools/local_sip_peer.py', '--incoming'])
-            test(api, 'reception', ['-e', 'reception', 'true'], output, ['tools/reception_sip_peer.py'])
-            results.append({'api': api, 'result': 'PASS', 'tests': ['dnd', 'setup', 'rtp', 'reception']})
+            if options.audio_only:
+                from audio_signal_check import verify
+                test(api, 'audio', ['-e', 'audio', 'true', '-e', 'incoming', 'true',
+                     '-e', 'page_size', '16384' if api == 37 else '4096'], output,
+                     ['tools/local_sip_peer.py', '--incoming', '--tone'])
+                for name in ['audio-boost.wav', 'audio-boost.png']:
+                    with (output / name).open('wb') as artifact:
+                        subprocess.run([ADB, '-s', SERIAL, 'exec-out', 'run-as', PKG, 'cat', 'files/' + name], stdout=artifact, check=True)
+                test(api, 'audio-recovery', ['-e', 'audio_recovery', 'true'], output)
+                signal = verify(output / 'audio-boost.wav')
+                (output / 'signal.json').write_text(json.dumps(signal, indent=2))
+                results.append({'api': api, 'result': 'PASS', 'tests': ['audio', 'incoming', 'outgoing', 'background_rtp'], 'signal': signal})
+            else:
+                test(api, 'dnd', ['-e', 'dnd_grant', 'true'], output)
+                test(api, 'setup', ['-e', 'setup', 'true'], output)
+                with (output / 'setup.png').open('wb') as image:
+                    subprocess.run([ADB, '-s', SERIAL, 'exec-out', 'run-as', PKG, 'cat', 'files/setup.png'], stdout=image, check=True)
+                test(api, 'rtp', ['-e', 'incoming', 'true', '-e', 'page_size', '16384' if api == 37 else '4096'],
+                     output, ['tools/local_sip_peer.py', '--incoming'])
+                test(api, 'reception', ['-e', 'reception', 'true'], output, ['tools/reception_sip_peer.py'])
+                results.append({'api': api, 'result': 'PASS', 'tests': ['dnd', 'setup', 'rtp', 'reception']})
             print(f'API {api}: PASS', flush=True)
         except Exception as error:
             results.append({'api': api, 'result': 'FAIL', 'error': str(error)})

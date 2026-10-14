@@ -605,4 +605,9 @@
     <string name="logout_alert_message">Eseguendo il logout verranno cancellate le credenziali, sarà quindi necessario eseguire nuovamente la procedura di login.</string>
     <string name="alert_action_continue">Continua</string>
     <string name="alert_action_cancel">Annulla</string>
+    <string name="voice_boost">Boost voice</string>
+    <string name="voice_boost_level">Boost: +%1$d dB</string>
+    <string name="voice_boost_hint">Amplifies the received voice, up to +12 dB. Reduce it if the sound distorts. Resets when the call ends or the audio output changes.</string>
+    <string name="voice_boost_reset">Reset</string>
+    <string name="voice_boost_unavailable">Voice boost is unavailable for this call.</string>
 </resources>

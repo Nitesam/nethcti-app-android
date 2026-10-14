@@ -2,8 +2,9 @@
 """Single-call SIP/RTP test peer bound only to host loopback, for the Android emulator.
 
 No registration, accounts, credentials, external calls or real audio.
-Responds to the local test INVITE with G.711 PCMU silence and receives RTP.
+Responds to the local test INVITE with G.711 PCMU silence (or --tone) and receives RTP.
 """
+import math
 import json
 import argparse
 import re
@@ -13,10 +14,20 @@ import struct
 import time
 
 
+def pcmu(sample):
+    sign = 0x80 if sample < 0 else 0
+    value = min(32635, abs(sample)) + 0x84
+    exponent = max(0, value.bit_length() - 8)
+    mantissa = (value >> (exponent + 3)) & 15
+    return (~(sign | (exponent << 4) | mantissa)) & 255
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--incoming", action="store_true", help="also wait for the incoming-call test trigger")
+    parser.add_argument("--tone", action="store_true", help="synthetic 1 kHz low-level tone for gain tests")
     args = parser.parse_args()
+    samples = bytes(pcmu(round(1000 * math.sin(2 * math.pi * n / 8))) for n in range(160)) if args.tone else b"\xff" * 160
     sip = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     rtp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sip.bind(("127.0.0.1", 15060))
@@ -101,7 +112,7 @@ def main():
                 if not args.incoming or incoming_active:
                     return
         if remote_rtp and time.monotonic() >= next_packet:
-            payload = struct.pack("!BBHII", 0x80, 0, sequence, timestamp, 12345) + b"\xff" * 160
+            payload = struct.pack("!BBHII", 0x80, 0, sequence, timestamp, 12345) + samples
             rtp.sendto(payload, remote_rtp)
             sequence = (sequence + 1) & 0xffff
             timestamp = (timestamp + 160) & 0xffffffff

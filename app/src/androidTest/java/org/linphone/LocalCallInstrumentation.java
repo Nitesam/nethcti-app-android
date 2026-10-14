@@ -26,6 +26,8 @@ public final class LocalCallInstrumentation extends Instrumentation {
     private String previousContact;
     private org.linphone.core.ProxyConfig testAccount;
     private boolean testIncoming;
+    private boolean testAudio;
+    private boolean testAudioRecovery;
     private boolean testReception;
     private boolean testRevokedNotifications;
     private boolean testDndGrant;
@@ -39,6 +41,8 @@ public final class LocalCallInstrumentation extends Instrumentation {
 
     @Override public void onCreate(Bundle arguments) {
         super.onCreate(arguments);
+        testAudioRecovery = arguments != null && "true".equals(arguments.getString("audio_recovery"));
+        testAudio = arguments != null && "true".equals(arguments.getString("audio"));
         testIncoming = arguments != null && "true".equals(arguments.getString("incoming"));
         testReception = arguments != null && "true".equals(arguments.getString("reception"));
         testRevokedNotifications = arguments != null && "true".equals(arguments.getString("revoked_notifications"));
@@ -111,6 +115,15 @@ public final class LocalCallInstrumentation extends Instrumentation {
                 SystemClock.sleep(100);
             }
             require(core != null && LinphoneService.isReady(), "Application service did not start");
+            if (testAudioRecovery) {
+                onMain(() -> {
+                    require(Math.abs(core.getPlaybackGainDb()) < 0.01, "Boost leaked across process restart");
+                    require(!getTargetContext().getSharedPreferences("voice_boost_recovery", 0).contains("base"), "Recovery journal still pending");
+                });
+                result.putString("audio_recovery", "PASS: persisted temporary gain restored after process death");
+                finish(Activity.RESULT_OK, result);
+                return;
+            }
             SystemClock.sleep(1000); // Let the launcher finish opening the login screen.
             CountDownLatch connected = new CountDownLatch(1);
             onMain(() -> {
@@ -142,7 +155,12 @@ public final class LocalCallInstrumentation extends Instrumentation {
                     }
                 };
                 core.addListener(listener);
-                CallManager.getInstance().inviteAddress(Factory.instance().createAddress(
+                if (testAudio) {
+                    org.linphone.core.CallParams audioParams = core.createCallParams(null);
+                    audioParams.setVideoEnabled(false);
+                    audioParams.setRecordFile(new java.io.File(getTargetContext().getFilesDir(), "audio-boost.wav").getAbsolutePath());
+                    core.inviteAddressWithParams(Factory.instance().createAddress("sip:loopback@10.0.2.2:15060;transport=udp"), audioParams);
+                } else CallManager.getInstance().inviteAddress(Factory.instance().createAddress(
                         "sip:loopback@10.0.2.2:15060;transport=udp"), false, false, false);
                 call = core.getCurrentCall();
             });
@@ -165,6 +183,7 @@ public final class LocalCallInstrumentation extends Instrumentation {
             else require(ReceptionScenarios.isForeground(this), "Service is not foreground");
             result.putString("rtp_kbit_per_second", bandwidth[0] + "/" + bandwidth[1]);
             result.putInt("foreground_service_type", serviceType[0]);
+            if (testAudio) auditAudio(result);
             int[] packets = new int[4];
             onMain(() -> {
                 packets[0] = call.getAudioStats().getRtpPacketSent();
@@ -180,7 +199,13 @@ public final class LocalCallInstrumentation extends Instrumentation {
             result.putString("background_rtp_packets", (packets[2] - packets[0]) + "/" + (packets[3] - packets[1]));
             onMain(() -> call.terminate());
             SystemClock.sleep(1200);
-            onMain(() -> require(core.getCallsNb() == 0, "Call not released"));
+            onMain(() -> {
+                require(core.getCallsNb() == 0, "Call not released");
+                if (testAudio) {
+                    require(Math.abs(core.getPlaybackGainDb()) < 0.01, "Gain leaked after call end");
+                    require(LinphoneManager.getInstance().getVoiceBoost().getBoostDb() == 0, "Boost leaked after call end");
+                }
+            });
             if (testIncoming) {
                 getTargetContext().startActivity(new Intent(getTargetContext(), LinphoneLauncherActivity.class)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
@@ -221,7 +246,92 @@ public final class LocalCallInstrumentation extends Instrumentation {
                 });
             }
         }
+        if (testAudio && resultCode == Activity.RESULT_OK) {
+            onMain(() -> {
+                // Seed the exact durable state left by process death during a +6 dB boost.
+                require(core.getCallsNb() == 0, "Recovery seed requires no call");
+                getTargetContext().getSharedPreferences("voice_boost_recovery", 0).edit()
+                        .putFloat("base", 0).putFloat("applied", 6).putFloat("previous", 0).commit();
+                core.setPlaybackGainDb(3);
+                core.getConfig().sync();
+            });
+        }
         finish(resultCode, result);
+    }
+
+    private void auditAudio(Bundle result) throws Exception {
+        org.linphone.audio.VoiceBoostController boost = LinphoneManager.getInstance().getVoiceBoost();
+        final int[] originalVolume = new int[1];
+        final boolean[] hasEarpiece = new boolean[1];
+        onMain(() -> {
+            StringBuilder devices = new StringBuilder();
+            for (org.linphone.core.AudioDevice device : core.getExtendedAudioDevices()) {
+                devices.append(device.getType()).append(":").append(device.getCapabilities()).append(" ");
+                if (device.getType() == org.linphone.core.AudioDevice.Type.Earpiece
+                        && device.hasCapability(org.linphone.core.AudioDevice.Capabilities.CapabilityPlay)) hasEarpiece[0] = true;
+            }
+            result.putString("audio_devices", devices.toString());
+            require(Math.abs(core.getPlaybackGainDb()) < 0.01, "Fixture needs neutral original gain");
+            LinphoneManager.getInstance().routeAudioToSpeaker();
+            originalVolume[0] = getTargetContext().getSystemService(android.media.AudioManager.class)
+                    .getStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL);
+        });
+        SystemClock.sleep(1500);
+        onMain(() -> {
+            require(call.getOutputAudioDevice().getType() == org.linphone.core.AudioDevice.Type.Speaker, "SDK did not route to speaker");
+            call.startRecording();
+        });
+        SystemClock.sleep(3000);
+        onMain(() -> { require(boost.setBoostDb(6), "Boost rejected"); });
+        SystemClock.sleep(3000);
+        onMain(() -> { require(boost.setBoostDb(12), "Maximum rejected"); });
+        SystemClock.sleep(3000);
+        onMain(() -> { boost.reset(); });
+        SystemClock.sleep(3000);
+        onMain(() -> { call.stopRecording(); require(boost.setBoostDb(6), "Boost rejected"); });
+
+        // Exercise the real in-call button and the accessibility/user slider path.
+        Activity activity = startActivitySync(new Intent(getTargetContext(), org.linphone.call.CallActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        SystemClock.sleep(1000);
+        onMain(() -> { require(boost.getBoostDb() == 6, "Opening UI reset boost"); activity.findViewById(R.id.voice_boost).performClick(); });
+        SystemClock.sleep(500);
+        android.accessibilityservice.AccessibilityServiceInfo info = getUiAutomation().getServiceInfo();
+        info.flags |= android.accessibilityservice.AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS;
+        getUiAutomation().setServiceInfo(info);
+        SystemClock.sleep(300);
+        android.view.accessibility.AccessibilityNodeInfo root = getUiAutomation().getRootInActiveWindow();
+        java.util.List<android.view.accessibility.AccessibilityNodeInfo> nodes = root.findAccessibilityNodeInfosByViewId(
+                getTargetContext().getPackageName() + ":id/voice_boost_slider");
+        require(nodes.size() == 1, "Boost slider not visible");
+        Bundle action = new Bundle();
+        action.putFloat(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE, 9);
+        require(nodes.get(0).performAction(android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.getId(), action), "Slider action failed");
+        SystemClock.sleep(300);
+        onMain(() -> {
+            require(boost.getBoostDb() == 9 && Math.abs(core.getPlaybackGainDb() - 4.5f) < 0.01, "Slider did not apply receive gain");
+            require(getTargetContext().getSystemService(android.media.AudioManager.class).getStreamVolume(android.media.AudioManager.STREAM_VOICE_CALL)
+                    == originalVolume[0], "Boost changed Android call volume");
+        });
+        android.graphics.Bitmap screenshot = getUiAutomation().takeScreenshot();
+        if (screenshot != null) try (java.io.FileOutputStream out = getTargetContext().openFileOutput("audio-boost.png", 0)) {
+            screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out); screenshot.recycle();
+        }
+        onMain(() -> activity.recreate());
+        SystemClock.sleep(1000);
+        onMain(() -> {
+            require(boost.getBoostDb() == 9, "Activity recreation lost boost");
+            LinphoneManager.getInstance().routeAudioToReceiver();
+        });
+        SystemClock.sleep(1500);
+        onMain(() -> {
+            if (hasEarpiece[0]) require(call.getOutputAudioDevice().getType() == org.linphone.core.AudioDevice.Type.Earpiece, "SDK did not return to available earpiece");
+            result.putString("receiver_route", hasEarpiece[0] ? "Earpiece verified" : "No earpiece in emulator: fallback/reset verified only");
+            require(boost.getBoostDb() == 0 && Math.abs(core.getPlaybackGainDb()) < 0.01, "Route change did not restore gain");
+            require(boost.setBoostDb(6), "Final boost rejected");
+            org.linphone.call.CallActivity.instance().finish();
+        });
+        result.putString("audio", "PASS: available output selection/fallback, 0/6/12/0 dB recording, real slider, unchanged system volume, activity recreation, route reset");
     }
 
     private void verifyMinimalPermissionsAndAttachments(Bundle result) throws Exception {

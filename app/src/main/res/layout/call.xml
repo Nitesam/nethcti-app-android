@@ -283,6 +283,14 @@
                     android:layout_alignParentBottom="true"
                     android:gravity="bottom"
                     android:orientation="vertical">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/voice_boost"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
+                    android:text="@string/voice_boost"
+                    style="@style/Widget.MaterialComponents.Button.TextButton" />
+
 
                     <LinearLayout
                         android:id="@+id/secondary_bar"

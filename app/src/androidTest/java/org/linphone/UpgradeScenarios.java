@@ -5,7 +5,7 @@ import android.content.*;
 import android.os.*;
 import org.linphone.core.*;
 
-/** Seeds 1.6.4, then verifies 1.6.5 preserves real Core storage during adb install -r. */
+/** Seeds the previous APK, then verifies the new APK preserves real Core storage during adb install -r. */
 final class UpgradeScenarios {
     private final Instrumentation test;
     UpgradeScenarios(Instrumentation test) { this.test = test; }
@@ -53,7 +53,7 @@ final class UpgradeScenarios {
             if (failure.get() != null) throw new AssertionError(failure.get());
             String version = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).versionName;
             result.putString("upgrade", seed ? "PASS: persisted test account, call history and reception preferences on " + version
-                    : "PASS: account, call history and reception preferences preserved by update to 1.6.5");
+                    : "PASS: account, call history and reception preferences preserved by update to " + version);
             code = Activity.RESULT_OK;
         } catch (Throwable error) { result.putString("failure", android.util.Log.getStackTraceString(error)); }
         test.finish(code, result);
