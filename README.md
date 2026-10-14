@@ -2,7 +2,7 @@
 
 Fork non ufficiale di [Nethesis](https://github.com/nethesis/nethcti-app-android) per Android 9–17.
 
-**[Scarica APK 1.6.5](https://github.com/Nitesam/nethcti-app-android/releases/download/v1.6.5-test/NethCTI-1.6.5-test.apk)** · [Checksum e note](https://github.com/Nitesam/nethcti-app-android/releases/tag/v1.6.5-test)
+[Download APK & Checksum e note](https://github.com/Nitesam/nethcti-app-android/releases/tag/v1.6.5-test)
 
 Installa senza disinstallare per aggiornare le precedenti build di questo fork e conservare i dati. L’APK usa una firma di prova e il package `it.nethesis.nethctiapp.debug`: non aggiorna l’app del Play Store.
 
